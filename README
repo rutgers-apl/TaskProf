@@ -1,0 +1,6 @@
+TaskProf for TBB
+----------------
+1. First build TaskProf and TBB library for TaskProf
+   > source build.sh
+
+2. Then build and run each test in "tests" folder according to the instructions in each folder.

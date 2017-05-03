@@ -1,0 +1,17 @@
+This is an example to demonstrate how to improve the parallelism of a program with TaskProf.
+The program takes a range of integers and returns the set of prime numbers within that range.
+This folder contains the TBB implementation setup to run with TaskProf profiler.
+
+1) Follow instructions in root folder to build TaskProf and TBB library.
+
+2) Run make in current folder and run the program.
+   > ./detect_primes_tasks 0 10000000 2500000
+   This generates the profile ws_profile.csv. Notice that the parallelism in the program is low ~2.
+   To find the region of code that is the bottleneck, notice that the profile says that line 52 or 54 does the major percentage of work on the critical path.
+   Now designate the region of code between lines 34 and 48 (already annotated) as the region to optimize and build and run the program again.
+   The profiler will generate region profiles giving an estimate of the increase in parallelism of the program when the parallelism of the region is increased.
+   This is in region_all.csv.
+
+3) Now increase the parallelism in the program by running it with smaller grain size.
+   > ./detect_primes_tasks 0 10000000 10000
+   Notice the parallelism increased in the ws_profile.csv.

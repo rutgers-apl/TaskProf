@@ -1,0 +1,5 @@
+1) Build
+   > make
+
+3) Execute TaskProf in parallel
+   > ./tree_sum
