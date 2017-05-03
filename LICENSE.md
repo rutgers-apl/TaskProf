@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2017 rutgers-apl
+Copyright (c) 2017 Adarsh Yoga and Santosh Nagarakatte, Rutgers University
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
