@@ -26,7 +26,7 @@ PERF_RUN_ARGS=auto 100000000 silent
 ifneq (,$(shell which icc 2>/dev/null))
 CXX=icc
 endif # icc
-CXXFLAGS=-std=c++11 -I$(TP_ROOT)/include -I$(TBBROOT)/include -fpermissive
+CXXFLAGS=-std=c++11 -I$(TP_ROOT)/include -I$(TBBROOT)/include -fpermissive -g
 ifeq ($(shell uname), Linux)
 ifeq ($(target), android)
 LIBS+= --sysroot=$(SYSROOT)
@@ -39,11 +39,11 @@ endif
 all:	release #test
 
 release: *.cpp
-	@$(CXX) -DNDEBUG $(CXXFLAGS) -o $(PROG) $^ -ltbbmalloc -ltbb $(LIBS)
+	$(CXX) -DNDEBUG $(CXXFLAGS) -o $(PROG) $^ -ltbbmalloc -ltbb $(LIBS)
 	@echo "Compiled "$<" successfully!"
 
 debug: *.cpp
-	$(CXX) -O0 -g -DTBB_USE_DEBUG $(CXXFLAGS) -o $(PROG) $^ -ltbbmalloc_debug -ltbb_debug $(LIBS)
+	$(CXX) -DTBB_USE_DEBUG $(CXXFLAGS) -o $(PROG) $^ -ltbbmalloc_debug -ltbb_debug $(LIBS)
 
 clean:
 	$(RM) $(PROG) *.o *.d

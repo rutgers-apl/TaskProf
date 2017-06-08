@@ -6,7 +6,13 @@ echo $root_cwd
 echo "***** Building TaskProf *****"
 export LD_LIBRARY_PATH=""
 cd $root_cwd
-cd ptprof_lib
+cd ptprof_lib/collection_phase
+make clean
+make
+source tpvars.sh
+
+cd $root_cwd
+cd ptprof_lib/analysis_phase
 make clean
 make
 source tpvars.sh

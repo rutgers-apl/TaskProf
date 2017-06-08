@@ -1,18 +1,16 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define NUM_THREADS 64
+#define NUM_THREADS 32
 
 #include <pthread.h>
 
-typedef unsigned long THREADID;
+typedef unsigned int THREADID;
 typedef unsigned long ADDRINT;
 typedef pthread_mutex_t PIN_LOCK;
 
-enum AccessType {
-  READ = 0,
-  WRITE = 1
-};
+//#define PIN_GetLock(lock, tid)
+//#define PIN_ReleaseLock(lock)
 
 extern PIN_LOCK lock;
 
@@ -23,5 +21,6 @@ inline void PIN_GetLock(PIN_LOCK* lock, int tid) {
 inline void PIN_ReleaseLock(PIN_LOCK* lock) {
   pthread_mutex_unlock(lock);
 }
+
 
 #endif

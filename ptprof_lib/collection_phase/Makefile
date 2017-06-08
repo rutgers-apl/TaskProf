@@ -8,7 +8,7 @@ OPT=-O3
 
 CXXFLAGS+=-fPIC -g -Wall -std=c++11
 
-INCPATH=-I./include -I../tprof-tbb-lib/include
+INCPATH=-I./include -I../../../task_debug/tbb43_20141204oss/include
 ARFLAGS=-rcs
 
 # change these to set the proper directories where each files shoould be
@@ -34,7 +34,7 @@ tool: $(OBJECTS)
 	@echo "Linking complete!"
 
 $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.cpp
-	$(CXX) $(OPT) $(CXXFLAGS) -c $< $(INCPATH) -o $@
+	@$(CXX) $(OPT) $(CXXFLAGS) -c $< $(INCPATH) -o $@
 	@echo "Compiled "$<" successfully!"
 
 .PHONY: clean

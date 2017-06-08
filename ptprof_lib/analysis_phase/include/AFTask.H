@@ -1,7 +1,7 @@
 #ifndef AFTASK_H
 #define AFTASK_H
 
-#include <map>
+#include "unique_task_id.H"
 
 enum NodeType {
   NO_TYPE = 0,
@@ -25,14 +25,15 @@ struct profiler_data {
 };
 
 struct AFTask {
-  size_t taskId;
+  //size_t taskId;
+  //size_t cur_step;
+  //NodeType young_ns_child; //NodeType of youngest non-step child  
+  //bool sp_root_n_wt_flag;
+  //struct unique_task_id ut_id;
+
   size_t parent;
-  size_t cur_step;
   NodeType type;
   size_t num_children;
-  NodeType young_ns_child; //NodeType of youngest non-step child
-  
-  bool sp_root_n_wt_flag;
 
   /* profile data for each task */
   struct profiler_data t_prof;

@@ -14,7 +14,7 @@ typedef tbb::internal::tbb_thread_v3::id TBB_TID;
 
 extern std::map<TBB_TID, size_t> tid_map;
 
-extern PIN_LOCK tid_map_lock;
+//extern PIN_LOCK tid_map_lock;
 
 extern tbb::atomic<size_t> task_id_ctr;
 
@@ -26,6 +26,8 @@ extern Task_Profiler* taskProf;
 
 #define __OPTIMIZE__BEGIN__ __optimize_begin__(__FILE__, __LINE__);
 #define __OPTIMIZE__END__ __optimize_end__(__FILE__, __LINE__);
+//#define __OPTIMIZE__BEGIN__
+//#define __OPTIMIZE__END__
 
 extern "C" {
   __attribute__((noinline)) void TD_Activate();
@@ -37,7 +39,7 @@ extern "C" {
   __attribute__((noinline)) void __exec_end__(unsigned long taskId);
 
   __attribute__((noinline)) void __optimize_begin__(const char* file, int line);
-  
+
   __attribute__((noinline)) void __optimize_end__(const char* file, int line);
 
   size_t get_cur_tid( );

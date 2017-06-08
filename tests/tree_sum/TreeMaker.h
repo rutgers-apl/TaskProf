@@ -94,7 +94,9 @@ class TreeMaker {
     root->value = Value(Pi*number_of_nodes);
     --number_of_nodes;
 
+    __OPTIMIZE__BEGIN__
     root->left  = do_all_1( number_of_nodes/2 );
+    __OPTIMIZE__END__
     root->right = do_all_2( number_of_nodes - number_of_nodes/2 );
 
     return root;

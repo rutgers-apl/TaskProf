@@ -7,7 +7,7 @@
 
 tbb::atomic<size_t> task_id_ctr;
 tbb::atomic<size_t> tid_ctr;
-PIN_LOCK lock;
+//PIN_LOCK lock;
 PIN_LOCK tid_map_lock;
 std::map<TBB_TID, size_t> tid_map;
 AFTaskGraph* taskGraph;
@@ -38,7 +38,7 @@ extern "C" {
   __attribute__((noinline)) void __optimize_begin__(const char* file, int line){
     /*PROF CALL*/taskProf->TP_CaptureBeginOptimize(get_cur_tid(), file, line, __builtin_return_address(0));
   }
-
+  
   __attribute__((noinline)) void __optimize_end__(const char* file, int line){
     /*PROF CALL*/taskProf->TP_CaptureEndOptimize(get_cur_tid(), file, line, __builtin_return_address(0));
   }
