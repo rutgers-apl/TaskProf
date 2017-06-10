@@ -8,7 +8,7 @@ OPT=-O3
 
 CXXFLAGS+=-fPIC -g -Wall -std=c++11
 
-INCPATH=-I./include -I../../../task_debug/tbb43_20141204oss/include
+INCPATH=-I./include -I../../tprof-tbb-lib/include
 ARFLAGS=-rcs
 
 # change these to set the proper directories where each files shoould be
