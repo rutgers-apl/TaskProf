@@ -45,8 +45,7 @@ void Task_Profiler::start_count(THREADID threadid) {
   int fd;
   fd = perf_event_open_wrapper(&pe, 0, -1, -1, 0);
   if (fd == -1) {
-    std:: cout << "ERR NOS:" << EMFILE << std::endl;
-    fprintf(stderr, "Error opening leader. Error number: %d\n", errno);
+    fprintf(stderr, "Unable to read performance counters. Linux perf event API not supported on the machine. Error number: %d\n", errno);
     exit(EXIT_FAILURE);
   }
   perf_fds[threadid] = fd;
