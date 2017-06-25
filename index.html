@@ -3,11 +3,76 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <title>TaskProf: A Fast Causal Profiler for Task Parallel Programs</title>
-<link href="css/styles.css" rel="stylesheet">
+
+<style>
+body {
+    background:LightGoldenRodYellow ;
+}
+
+.topl {
+position: absolute;
+top:0;
+    width: 20%;
+    height: 120px;
+background:white ;
+position: fixed;
+overflow-x: hidden;
+}
+
+.topl a {
+    text-decoration: none;
+    font-size: 30px;
+    color: DarkSlateGray ;
+    display: block;
+}
+
+.container {
+position:absolute;
+top:120px;
+   width: 20%;
+    height: 100%;
+   background:white;
+position: fixed;
+overflow-x: hidden;
+}
+
+.container a {
+    text-decoration: none;
+    font-size: 20px;
+    color: #818181;
+    display: block;
+}
+
+.main {
+position: absolute;
+margin-left: 300px;
+top:0;
+    height: 100%;
+    width: 70%
+}
+
+</style>
+<!-- <link href="css/styles.css" rel="stylesheet"> -->
 </head>
 
 <body>
-<div style="width:800px">
+
+<div class="topl">
+<a href="#top">TaskProf Home</a>
+</div>
+
+<div class="container"> 
+  <a href="#TaskProf">1. TaskProf Installation and Usage</a>
+  <a href="#Installation">&nbsp &nbsp 1.1. Installation</a>
+  <a href="#Usage">&nbsp &nbsp 1.2. Usage</a>
+  <br>
+  <a href="#Evaluation">2. TaskProf Evaluation</a>
+  <a href="#Effectiveness">&nbsp &nbsp 2.1. Effectiveness</a>
+  <a href="#Performance">&nbsp &nbsp 2.2. Performance</a>
+</div>
+
+<!-- <div style="width:800px"> -->
+<div class="main">
 <br><br>
 <center><font style="font-size:32px; font-family: Verdana;">TaskProf: A Fast Causal Profiler for Task Parallel Programs</font></center>
 <br>
@@ -19,16 +84,16 @@
 
 <h2><a name="TaskProf"/>1. TaskProf Installation and Usage</h2>
 <p align="justify">TaskProf and the modified TBB library can be downloaded from <a href="https://github.com/rutgers-apl/TaskProf">GitHub</a>. TaskProf relies on hardware support for performance counters and uses the <i>perf</i> API in Linux to read the performance counters. Hence TaskProf must be executed on a machine with support for the <i>perf</i> API. Most recent versions of Linux support the <i>perf</i> API. We have tested TaskProf of Ubuntu 14.04 and 16.04.</p>
-<p align="justify">The artifact is structured as follows. (a) <b>ptprof_lib</b> contains the TaskProf implementation, (b)<b>tprof-tbb-lib</b> contains the modified TBB library, and (c)<b>tests</b> contain two test programs to demonstrate the ability of TaskProf.</p>
+<p align="justify">The artifact is structured as follows. (a) <b>ptprof_lib</b> contains the TaskProf implementation, (b) <b>tprof-tbb-lib</b> contains the modified TBB library, and (c) <b>tests</b> contain two test programs to demonstrate TaskProf's usage.</p>
 
-<h3>1.1. Installation</h3>
+<h3><a name="Installation"/>1.1. Installation</h3>
 <p align="justify">We provide a bash script to automate the installation of TaskProf and the TBB library. We use &lt;ART_ROOT&gt; to refer to the base directory of our artifact. To build TaskProf,</p>
 &nbsp;<code> > cd &lt;ART_ROOT&gt;</code>
 <br>
 &nbsp;<code> > source build.sh</code>
 <p align="justify">A successful build will create the shared libraries for TaskProf and TBB and also setup the appropriate environment variables. Note, the bash script has to be sourced at the command-line. The installation will fail if it is run as an executable (i.e, with ./).</p>
 
-<h3>1.2. Usage</h3>
+<h3><a name="Usage"/>1.2. Usage</h3>
 <p align="justify">We demonstrate how to use TaskProf on the <i>tree sum</i> test program under the <b>tests</b> folder.</p>
 <p align="justify">TaskProf generates the profile for the program in two phases. In the first phase TaskProf executes in parallel along with the program and generates the profile data for the program. In the next phase, TaskProf reads the profile data and generates the parallelism profile for the program similar to as shown in Figure 3(a) in our paper. To execute TaskProf on the <i>tree sum</i> test program,</p>
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/tests/tree_sum</code>
@@ -45,11 +110,11 @@
 <p align="justify">The parallelism profile for <i>treesum</i> shows that the program has very low parallelism (2.5~4.5) and the majority of the work on the critical path (99%) is performed by the main function (or any function called from main before the first task is spawned or after the last task completes). On examining the code, we find that the <i>main</i> function(in main.cpp) calls <i>create_and_time</i> (in TreeMaker.h) where half of the nodes is passed to <i>do_all_1</i> and the other half is passed to <i>do_all_2</i>. On examining both the functions we find that <i>do_all_1</i> constructs the tree serially whereas <i>do_all_2</i> constructs it in parallel.</p> 
 <p align="justify">We can use TaskProf's Causal Profiler to obtain an estimate of the increase in the parallelism of the program on optimizing <i>do_all_1</i>. To generate the causal profile annotate the region of code around the call to <i>do_all_1</i> with __OPTIMIZE__BEGIN__ and __OPTIMIZE__END__(already added). Now compile and execute TaskProf on the <i>treesum</i> program as shown above. The post-processing program, gentprof, will now generate a file named <b>region_all.csv</b> along with the file <b>ws_profile.csv</b>. The <b>region_all.csv</b> file reports the parallelism for the whole program when the parallelism of the annotated region is optimized by 50X, 100X, 200X and 400X. The causal profile shows that the parallelism of the program increases if the annoted region is optimized.</p>
 
-<h2><a name="TaskProf"/>2. TaskProf Evaluation</h2>
+<h2><a name="Evaluation"/>2. TaskProf Evaluation</h2>
 
 <p align="justify">We propose to evaluate our artifact by demonstrating the effectivess of TaskProf in finding parallelism bottlenecks in TBB programs while profiling them in parallel. We provide all the benchmark applications that we used to evaluate TaskProf.</p>
 
-<h3>2.1. Effectiveness(RQ1 in the paper)</h3>
+<h3><a name="Effectiveness"/>2.1. Effectiveness(RQ1 in the paper)</h3>
 
 <p align="justify">Using TaskProf we were able to optimize five applications. These applications and their optimized versions can be downloaded from <a href="https://drive.google.com/file/d/0B3345eAvaoMKSG5xMVdnY0dseU0/view?usp=sharing">here</a>. To unpack the applications, </p>
 &nbsp;<code> > cd &lt;ART_ROOT&gt;</code>
@@ -151,7 +216,7 @@
 <br>
 &nbsp;<code> > sh run.sh </code>
 
-<h3>2.2. Performance(RQ2 in the paper)</h3>
+<h3><a name="Performance"/>2.2. Performance(RQ2 in the paper)</h3>
 
 <p align="justify">In order to reproduce the speedup graph of parallel execution of TaskProf over its serial execution(Figure 6 in the paper), download the rest of the benchmarks from <a href="https://drive.google.com/file/d/0B3345eAvaoMKV09uXzRXc3pPeFk/view?usp=sharing">here</a>.</p>
 
