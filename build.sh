@@ -1,5 +1,12 @@
 #!/bin/bash
 
+perf list | grep "cpu-cycles OR cycles" &> /dev/null
+if [ $? != 0 ]; then
+    echo "Hardware Performance Counters not enabled. TaskProf requires a machine with Hardware Performance Counters. Exiting build."
+    exit 1
+fi
+
+
 root_cwd="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )" #
 echo $root_cwd
 
