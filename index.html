@@ -83,17 +83,24 @@ top:0;
 <p align="justify">The artifact contains our tool and the TBB applications that we used to evaluate it. We provide detailed instructions on how to build and use TaskProf. Using TaskProf, we were able to design parallelization techniques for five TBB applications. We describe how TaskProf assisted us in identifying the parallelization opportunities in the five applications.</p>
 
 <h2><a name="TaskProf"/>1. TaskProf Installation and Usage</h2>
-<p align="justify">TaskProf and the modified TBB library can be downloaded from <a href="https://github.com/rutgers-apl/TaskProf">GitHub</a>. TaskProf relies on hardware support for performance counters and uses the <i>perf</i> API in Linux to read the performance counters. Hence TaskProf must be executed on a machine with support for the <i>perf</i> API. Most recent versions of Linux support the <i>perf</i> API. We have tested TaskProf of Ubuntu 14.04 and 16.04.</p>
-<p align="justify">The artifact is structured as follows. (a) <b>ptprof_lib</b> contains the TaskProf implementation, (b) <b>tprof-tbb-lib</b> contains the modified TBB library, and (c) <b>tests</b> contain two test programs to demonstrate TaskProf's usage.</p>
+<p align="justify">TaskProf and the modified TBB library can be downloaded from <a href="https://github.com/rutgers-apl/TaskProf">GitHub</a>. The artifact is structured as follows. (a) <b>ptprof_lib</b> contains the TaskProf implementation, (b) <b>tprof-tbb-lib</b> contains the modified TBB library, and (c) <b>tests</b> contain two test programs to demonstrate TaskProf's usage. In addition, we provide all the benchmark applications that we used to evaluate TaskProf. The links to download the applications are provided in Section <a href="#Evaluation">2</a>.</p>
 
-<h3><a name="Installation"/>1.1. Installation</h3>
+<h3><a name="Prerequisite"/>1.1. Prerequisite</h3>
+<p align="justify">TaskProf relies on hardware support for performance counters. It must be executed on a machine that has performance counters enabled. In order to access the performance counters, TaskProf must be executed directly on the machine and not through a VM. Currently available VMs cannot access the host machine performance counters. The build script that we provide for installation checks in the machine supports hardware performance counters. Alternatively, one can check using the command,</p>
+&nbsp;<code> > dmesg | grep PMU</code>
+<p align="justify">If the output is "Performance Events: Unsupported...", then the machine does not support performance counters and TaskProf cannot be executed on the machine.</p>
+<p align="justify"> TaskProf uses the <i>perf_events</i> API in Linux to read the performance counters. It must be executed on a linux machine with support for the <i>perf_events</i> API. Most recent versions of Linux support the <i>perf_events</i> API.We have tested TaskProf on Ubuntu 14.04 and 16.04.</p>
+
+<h3><a name="Installation"/>1.2. Installation</h3>
+<p align="justify">Install <i>perf</i> using,</p>
+&nbsp;<code> > sudo apt-get install linux-tools-common linux-tools-generic linux-tools-`uname -r`</code>
 <p align="justify">We provide a bash script to automate the installation of TaskProf and the TBB library. We use &lt;ART_ROOT&gt; to refer to the base directory of our artifact. To build TaskProf,</p>
 &nbsp;<code> > cd &lt;ART_ROOT&gt;</code>
 <br>
 &nbsp;<code> > source build.sh</code>
 <p align="justify">A successful build will create the shared libraries for TaskProf and TBB and also setup the appropriate environment variables. Note, the bash script has to be sourced at the command-line. The installation will fail if it is run as an executable (i.e, with ./).</p>
 
-<h3><a name="Usage"/>1.2. Usage</h3>
+<h3><a name="Usage"/>1.3. Usage</h3>
 <p align="justify">We demonstrate how to use TaskProf on the <i>tree sum</i> test program under the <b>tests</b> folder.</p>
 <p align="justify">TaskProf generates the profile for the program in two phases. In the first phase TaskProf executes in parallel along with the program and generates the profile data for the program. In the next phase, TaskProf reads the profile data and generates the parallelism profile for the program similar to as shown in Figure 3(a) in our paper. To execute TaskProf on the <i>tree sum</i> test program,</p>
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/tests/tree_sum</code>
