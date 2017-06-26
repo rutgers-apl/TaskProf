@@ -63,8 +63,9 @@ top:0;
 
 <div class="container"> 
   <a href="#TaskProf">1. TaskProf Installation and Usage</a>
-  <a href="#Installation">&nbsp &nbsp 1.1. Installation</a>
-  <a href="#Usage">&nbsp &nbsp 1.2. Usage</a>
+  <a href="#Prerequisite">&nbsp &nbsp 1.1. Prerequisite</a>
+  <a href="#Installation">&nbsp &nbsp 1.2. Installation</a>
+  <a href="#Usage">&nbsp &nbsp 1.3. Usage</a>
   <br>
   <a href="#Evaluation">2. TaskProf Evaluation</a>
   <a href="#Effectiveness">&nbsp &nbsp 2.1. Effectiveness</a>
@@ -86,7 +87,7 @@ top:0;
 <p align="justify">TaskProf and the modified TBB library can be downloaded from <a href="https://github.com/rutgers-apl/TaskProf">GitHub</a>. The artifact is structured as follows. (a) <b>ptprof_lib</b> contains the TaskProf implementation, (b) <b>tprof-tbb-lib</b> contains the modified TBB library, and (c) <b>tests</b> contain two test programs to demonstrate TaskProf's usage. In addition, we provide all the benchmark applications that we used to evaluate TaskProf. The links to download the applications are provided in Section <a href="#Evaluation">2</a>.</p>
 
 <h3><a name="Prerequisite"/>1.1. Prerequisite</h3>
-<p align="justify">TaskProf relies on hardware support for performance counters. It must be executed on a machine that has performance counters enabled. In order to access the performance counters, TaskProf must be executed directly on the machine and not through a VM. Currently available VMs cannot access the host machine performance counters. The build script that we provide for installation checks in the machine supports hardware performance counters. Alternatively, one can check using the command,</p>
+<p align="justify">TaskProf relies on hardware support for performance counters. It must be executed on a machine that has performance counters enabled. In order to access the performance counters, TaskProf must be executed directly on the machine and not through a VM. Currently available VMs cannot access the host machine's performance counters. The build script that we provide for installation, checks if the machine supports hardware performance counters. Alternatively, one can check using the command,</p>
 &nbsp;<code> > dmesg | grep PMU</code>
 <p align="justify">If the output is "Performance Events: Unsupported...", then the machine does not support performance counters and TaskProf cannot be executed on the machine.</p>
 <p align="justify"> TaskProf uses the <i>perf_events</i> API in Linux to read the performance counters. It must be executed on a linux machine with support for the <i>perf_events</i> API. Most recent versions of Linux support the <i>perf_events</i> API.We have tested TaskProf on Ubuntu 14.04 and 16.04.</p>
@@ -119,7 +120,7 @@ top:0;
 
 <h2><a name="Evaluation"/>2. TaskProf Evaluation</h2>
 
-<p align="justify">We propose to evaluate our artifact by demonstrating the effectivess of TaskProf in finding parallelism bottlenecks in TBB programs while profiling them in parallel. We provide all the benchmark applications that we used to evaluate TaskProf.</p>
+<p align="justify">We propose to evaluate our artifact by demonstrating the effectivess of TaskProf in finding parallelism bottlenecks in TBB programs while profiling them in parallel.</p>
 
 <h3><a name="Effectiveness"/>2.1. Effectiveness(RQ1 in the paper)</h3>
 
@@ -128,7 +129,9 @@ top:0;
 <br>
 &nbsp;<code> > tar -xvf &lt;path_to_opt_benchmarks.tar.gz&gt;</code>
 
-<p align="justify">Next, we describe how to generate the effectiveness results for the <i>minimum spanning forest</i> application(Figure 5.I in the paper). The instructions to reproduce the results for the other four benchmarks follow similarly.</p>
+<p align="justify">Next, we describe how to generate the effectiveness results for the <i>minimum spanning forest</i> application(Figure 5.I in the paper). The instructions to reproduce the results for the other four applications follow similarly. Alternatively, we provide a python script run_bmarks_opt.py to execute all the applications and their optimized versions. To execute the script,</p>
+&nbsp;<code> > nohup python run_bmarks_opt.py > report_opt.txt </code>
+<p align="justify">This script reproduces the results in Figure 5 in the paper. The original parallelism profile(Figure (a) for each application) and the causal profile(Figure (b)) can in found in the <b>ws_profile.csv</b> and <b>region_all.csv</b> files respectively in each application folder. The optimized parallelism profile(Figure (c)) can be found in the <b>ws_profile.csv</b> file in the folder containing the optimzed version of each application(folder name ending with _opt).</p>
 
 <h4>Minimum Spanning Forest</h4>
 
@@ -243,6 +246,6 @@ top:0;
 
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/benchmarks</code>
 <br>
-&nbsp;<code> > nohup python run_bmarks.py > report.txt & </code>
+&nbsp;<code> > nohup python run_bmarks_speedup.py > report_speedup.txt & </code>
 </div>
 </body>
