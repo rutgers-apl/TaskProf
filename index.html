@@ -70,6 +70,11 @@ top:0;
   <a href="#Evaluation">2. TaskProf Evaluation</a>
   <a href="#Effectiveness">&nbsp &nbsp 2.1. Effectiveness</a>
   <a href="#Performance">&nbsp &nbsp 2.2. Performance</a>
+  <br>
+  <a href="#remmachine">3. Artifact on Remote Machine</a>
+  <a href="#reminstall">&nbsp &nbsp 3.1. Installation</a>
+  <a href="#remusage">&nbsp &nbsp 3.2. Usage</a>
+  <a href="#remevaluation">&nbsp &nbsp 3.3. Evaluation</a>
 </div>
 
 <!-- <div style="width:800px"> -->
@@ -85,6 +90,8 @@ top:0;
 
 <h2><a name="TaskProf"/>1. TaskProf Installation and Usage</h2>
 <p align="justify">TaskProf and the modified TBB library can be downloaded from <a href="https://github.com/rutgers-apl/TaskProf">GitHub</a>. The artifact is structured as follows. (a) <b>ptprof_lib</b> contains the TaskProf implementation, (b) <b>tprof-tbb-lib</b> contains the modified TBB library, and (c) <b>tests</b> contain two test programs to demonstrate TaskProf's usage. In addition, we provide all the benchmark applications that we used to evaluate TaskProf. The links to download the applications are provided in Section <a href="#Evaluation">2</a>.</p>
+
+<p align="justify"><b>Since TaskProf requires a machine with hardware performance counters, we provide access to a remote machine that has hardware performance counters. Refer to Section <a href="#remmachine">3</a> for instructions on running the artifact on the remote machine.</b></p>
 
 <h3><a name="Prerequisite"/>1.1. Prerequisite</h3>
 <p align="justify">TaskProf relies on hardware support for performance counters. It must be executed on a machine that has performance counters enabled. In order to access the performance counters, TaskProf must be executed directly on the machine and not through a VM. Currently available VMs cannot access the host machine's performance counters. The build script that we provide for installation, checks if the machine supports hardware performance counters. Alternatively, one can check using the command,</p>
@@ -102,7 +109,7 @@ top:0;
 <p align="justify">A successful build will create the shared libraries for TaskProf and TBB and also setup the appropriate environment variables. Note, the bash script has to be sourced at the command-line. The installation will fail if it is run as an executable (i.e, with ./).</p>
 
 <h3><a name="Usage"/>1.3. Usage</h3>
-<p align="justify">We demonstrate how to use TaskProf on the <i>tree sum</i> test program under the <b>tests</b> folder.</p>
+<p align="justify">We demonstrate how to use TaskProf on the <i>tree sum</i> test program under the <b>tests</b> directory.</p>
 <p align="justify">TaskProf generates the profile for the program in two phases. In the first phase TaskProf executes in parallel along with the program and generates the profile data for the program. In the next phase, TaskProf reads the profile data and generates the parallelism profile for the program similar to as shown in Figure 3(a) in our paper. To execute TaskProf on the <i>tree sum</i> test program,</p>
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/tests/tree_sum</code>
 <br>
@@ -115,23 +122,24 @@ top:0;
 
 <p align="justify">This generates the parallelism profile for <i>treesum</i> in the file <b>ws_profile.csv</b>. The first row of the profile describes what each column represents. The second row specifies the parallelism of the entire program and the percentage of work performed on the critical path by the main function. The rest of the rows specify the parallelism and the critical path percentage for each static spawn site in the program.</p>
 
-<p align="justify">The parallelism profile for <i>treesum</i> shows that the program has very low parallelism (2.5~4.5) and the majority of the work on the critical path (99%) is performed by the main function (or any function called from main before the first task is spawned or after the last task completes). On examining the code, we find that the <i>main</i> function(in main.cpp) calls <i>create_and_time</i> (in TreeMaker.h) where half of the nodes is passed to <i>do_all_1</i> and the other half is passed to <i>do_all_2</i>. On examining both the functions we find that <i>do_all_1</i> constructs the tree serially whereas <i>do_all_2</i> constructs it in parallel.</p> 
-<p align="justify">We can use TaskProf's Causal Profiler to obtain an estimate of the increase in the parallelism of the program on optimizing <i>do_all_1</i>. To generate the causal profile annotate the region of code around the call to <i>do_all_1</i> with __OPTIMIZE__BEGIN__ and __OPTIMIZE__END__(already added). Now compile and execute TaskProf on the <i>treesum</i> program as shown above. The post-processing program, gentprof, will now generate a file named <b>region_all.csv</b> along with the file <b>ws_profile.csv</b>. The <b>region_all.csv</b> file reports the parallelism for the whole program when the parallelism of the annotated region is optimized by 50X, 100X, 200X and 400X. The causal profile shows that the parallelism of the program increases if the annoted region is optimized.</p>
+<p align="justify">The parallelism profile for <i>treesum</i> shows that the program has very low parallelism (2.5~4.5) and the majority of the work on the critical path (99%) is performed by the main function (or any function called from main before the first task is spawned or after the last task completes). On examining the code, we find that the main function (in main.cpp) calls <i>create_and_time</i> (in TreeMaker.h) where half of the nodes is passed to <i>do_all_1</i> and the other half is passed to <i>do_all_2</i>. On examining both the functions we find that <i>do_all_1</i> constructs the tree serially whereas <i>do_all_2</i> constructs it in parallel.</p> 
+<p align="justify">We can use TaskProf's Causal Profiler to obtain an estimate of the increase in the parallelism of the program on optimizing <i>do_all_1</i>. To generate the causal profile annotate the region of code around the call to <i>do_all_1</i> with __OPTIMIZE__BEGIN__ and __OPTIMIZE__END__ (already added). Now compile and execute TaskProf on the <i>treesum</i> program as shown above. The post-processing program, gentprof, will now generate a file named <b>region_all.csv</b> along with the file <b>ws_profile.csv</b>. The <b>region_all.csv</b> file reports the parallelism for the whole program when the parallelism of the annotated region is optimized by 50X, 100X, 200X and 400X. The causal profile shows that the parallelism of the program increases if the annotated region is optimized.</p>
 
 <h2><a name="Evaluation"/>2. TaskProf Evaluation</h2>
 
-<p align="justify">We propose to evaluate our artifact by demonstrating the effectivess of TaskProf in finding parallelism bottlenecks in TBB programs while profiling them in parallel.</p>
+<p align="justify">We propose to evaluate our artifact by demonstrating the effectivness of TaskProf in finding parallelism bottlenecks in TBB programs while profiling them in parallel.</p>
 
-<h3><a name="Effectiveness"/>2.1. Effectiveness(RQ1 in the paper)</h3>
+<h3><a name="Effectiveness"/>2.1. Effectiveness (RQ1 in the paper)</h3>
 
 <p align="justify">Using TaskProf we were able to optimize five applications. These applications and their optimized versions can be downloaded from <a href="https://drive.google.com/file/d/0B3345eAvaoMKSG5xMVdnY0dseU0/view?usp=sharing">here</a>. To unpack the applications, </p>
 &nbsp;<code> > cd &lt;ART_ROOT&gt;</code>
 <br>
 &nbsp;<code> > tar -xvf &lt;path_to_opt_benchmarks.tar.gz&gt;</code>
 
-<p align="justify">Next, we describe how to generate the effectiveness results for the <i>minimum spanning forest</i> application(Figure 5.I in the paper). The instructions to reproduce the results for the other four applications follow similarly. Alternatively, we provide a python script run_bmarks_opt.py to execute all the applications and their optimized versions. To execute the script,</p>
-&nbsp;<code> > nohup python run_bmarks_opt.py > report_opt.txt </code>
-<p align="justify">This script reproduces the results in Figure 5 in the paper. The original parallelism profile(Figure (a) for each application) and the causal profile(Figure (b)) can in found in the <b>ws_profile.csv</b> and <b>region_all.csv</b> files respectively in each application folder. The optimized parallelism profile(Figure (c)) can be found in the <b>ws_profile.csv</b> file in the folder containing the optimzed version of each application(folder name ending with _opt).</p>
+<p align="justify">Next, we describe how to generate the effectiveness results for the <i>minimum spanning forest</i> application (Figure 5.I in the paper). The instructions to reproduce the results for the other four applications follow similarly. Alternatively, we provide a python script run_bmarks_opt.py to execute all the applications and their optimized versions. To execute the script,</p>
+&nbsp;<code> > cd &lt;ART_ROOT&gt;/benchmarks </code><br>
+&nbsp;<code> > nohup python run_bmarks_opt.py > report_opt.txt & </code>
+<p align="justify">This script reproduces the results in Figure 5 in the paper. The original parallelism profile (Figure (a) for each application) and the causal profile (Figure (b)) can in found in the <b>ws_profile.csv</b> and <b>region_all.csv</b> files respectively in each application directory. The optimized parallelism profile (Figure (c)) can be found in the <b>ws_profile.csv</b> file in the directory containing the optimized version of each application (directory name ending with _opt).</p>
 
 <h4>Minimum Spanning Forest</h4>
 
@@ -143,20 +151,20 @@ top:0;
 <p align="justify">To profile the application with TaskProf execute the run.sh shell script.</p>
 &nbsp;<code> > sh run.sh </code>
 
-<p align="justify">This generates the parallelism profile(figure 5.I.a in the paper) in the <b>ws_profile.csv</b> file. In addition to the parallelism profile, it also generates the causal profile(figure 5.I.b in the paper) in <b>region_all.csv</b> for the two regions that were identified for optimization. </p>
+<p align="justify">This generates the parallelism profile (figure 5.I.a in the paper) in the <b>ws_profile.csv</b> file. In addition to the parallelism profile, it also generates the causal profile (figure 5.I.b in the paper) in <b>region_all.csv</b> for the two regions that were identified for optimization. </p>
 
 <p align="justify">The optimized version of the <i>minimum spanning forest</i> application is at the location,</p>
 
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/benchmarks/minSpanningForest_opt/parallelKruskal</code>
 
-<p align="justify">To generate the parallelism profile(figure 5.I.c) in the <b>ws_profile.csv</b> file for the optimized version,</p>
+<p align="justify">To generate the parallelism profile (figure 5.I.c) in the <b>ws_profile.csv</b> file for the optimized version,</p>
 &nbsp;<code> > make </code>
 <br>
 &nbsp;<code> > sh run.sh </code>
 
 <h4>Convex Hull</h4>
 
-<p align="justify">To generate the parallelism profile(figure 5.II.a) and causal profile(figure 5.II.b) ,</p>
+<p align="justify">To generate the parallelism profile (figure 5.II.a) and causal profile (figure 5.II.b) ,</p>
 
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/benchmarks/convexHull/quickHull</code>
 <br>
@@ -164,7 +172,7 @@ top:0;
 <br>
 &nbsp;<code> > sh run.sh </code>
 
-<p align="justify">To generate the parallelism profile(figure 5.II.c) for the optimized version,</p>
+<p align="justify">To generate the parallelism profile (figure 5.II.c) for the optimized version,</p>
 
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/benchmarks/convexHull_opt/quickHull</code>
 <br>
@@ -174,7 +182,7 @@ top:0;
 
 <h4>Delaunay Triangulation</h4>
 
-<p align="justify">To generate the parallelism profile(figure 5.III.a) and causal profile(figure 5.III.b) ,</p>
+<p align="justify">To generate the parallelism profile (figure 5.III.a) and causal profile (figure 5.III.b) ,</p>
 
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/benchmarks/delaunayTriangulation/incrementalDelaunay</code>
 <br>
@@ -182,7 +190,7 @@ top:0;
 <br>
 &nbsp;<code> > sh run.sh </code>
 
-<p align="justify">To generate the parallelism profile(figure 5.III.c) for the optimized version,</p>
+<p align="justify">To generate the parallelism profile (figure 5.III.c) for the optimized version,</p>
 
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/benchmarks/delaunayTriangulation_opt/incrementalDelaunay</code>
 <br>
@@ -192,7 +200,7 @@ top:0;
 
 <h4>Delaunay Refinement</h4>
 
-<p align="justify">To generate the parallelism profile(figure 5.IV.a) and causal profile(figure 5.IV.b) ,</p>
+<p align="justify">To generate the parallelism profile (figure 5.IV.a) and causal profile (figure 5.IV.b) ,</p>
 
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/benchmarks/delaunayRefine/incrementalRefine</code>
 <br>
@@ -200,7 +208,7 @@ top:0;
 <br>
 &nbsp;<code> > sh run.sh </code>
 
-<p align="justify">To generate the parallelism profile(figure 5.IV.c) for the optimized version,</p>
+<p align="justify">To generate the parallelism profile (figure 5.IV.c) for the optimized version,</p>
 
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/benchmarks/delaunayRefine_opt/incrementalRefine</code>
 <br>
@@ -210,7 +218,7 @@ top:0;
 
 <h4>Blackscholes</h4>
 
-<p align="justify">To generate the parallelism profile(figure 5.V.a) and causal profile(figure 5.V.b) ,</p>
+<p align="justify">To generate the parallelism profile (figure 5.V.a) and causal profile (figure 5.V.b) ,</p>
 
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/benchmarks/blackscholes</code>
 <br>
@@ -218,7 +226,7 @@ top:0;
 <br>
 &nbsp;<code> > sh run.sh </code>
 
-<p align="justify">To generate the parallelism profile(figure 5.V.c) for the optimized version,</p>
+<p align="justify">To generate the parallelism profile (figure 5.V.c) for the optimized version,</p>
 
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/benchmarks/blackscholes_opt</code>
 <br>
@@ -226,9 +234,9 @@ top:0;
 <br>
 &nbsp;<code> > sh run.sh </code>
 
-<h3><a name="Performance"/>2.2. Performance(RQ2 in the paper)</h3>
+<h3><a name="Performance"/>2.2. Performance (RQ2 in the paper)</h3>
 
-<p align="justify">In order to reproduce the speedup graph of parallel execution of TaskProf over its serial execution(Figure 6 in the paper), download the rest of the benchmarks from <a href="https://drive.google.com/file/d/0B3345eAvaoMKV09uXzRXc3pPeFk/view?usp=sharing">here</a>.</p>
+<p align="justify">In order to reproduce the speedup graph of parallel execution of TaskProf over its serial execution (Figure 6 in the paper), download the rest of the benchmarks from <a href="https://drive.google.com/file/d/0B3345eAvaoMKV09uXzRXc3pPeFk/view?usp=sharing">here</a>.</p>
 
 &nbsp;<code> > cd &lt;ART_ROOT&gt;</code>
 <br>
@@ -247,5 +255,48 @@ top:0;
 &nbsp;<code> > cd &lt;ART_ROOT&gt;/benchmarks</code>
 <br>
 &nbsp;<code> > nohup python run_bmarks_speedup.py > report_speedup.txt & </code>
+<p align="justify">The script generates a bar graph similar to Figure 6 in the paper in the file named <b>Speedup_graph.pdf</b>.</p>
+
+<h2><a name="remmachine"/>3. TaskProf Installation and Usage on Remote Machine</h2>
+<p align="justify">Login to the remote machine with the provided user credentials. TaskProf and the accompanying benchmarks are at the location <b>"/freespace/local/TaskProf"</b></p>
+
+<h3><a name="reminstall"/>3.1. Installation</h3>
+&nbsp;<code> > cd /freespace/local/TaskProf</code>
+<br>
+&nbsp;<code> > source build.sh</code>
+<p align="justify">Note, the bash script has to be sourced at the command-line. The installation will fail if it is run as an executable (i.e, with ./).</p>
+
+<h3><a name="remusage"/>3.2. Usage</h3>
+<p align="justify">We demonstrate how to use TaskProf on the <i>tree sum</i> test program under the <b>tests</b> directory.</p>
+<p align="justify">TaskProf generates the profile for the program in two phases. In the first phase TaskProf executes in parallel along with the program and generates the profile data for the program. In the next phase, TaskProf reads the profile data and generates the parallelism profile for the program similar to as shown in Figure 3(a) in our paper. To execute TaskProf on the <i>tree sum</i> test program,</p>
+&nbsp;<code> > cd /freespace/local/TaskProf/tests/tree_sum</code>
+<br>
+&nbsp;<code> > make</code>
+<br>
+&nbsp;<code> > ./tree_sum</code>
+<p align="justify">This generates the profile data from the execution of the program. Next execute TaskProf's post-processing program. Note, TP_GENPROF is an environment variable already setup by the build script.</p>
+
+&nbsp;<code> > $TP_GENPROF/gentprof</code>
+
+<p align="justify">This generates the parallelism profile for <i>treesum</i> in the file <b>ws_profile.csv</b>. The first row of the profile describes what each column represents. The second row specifies the parallelism of the entire program and the percentage of work performed on the critical path by the main function. The rest of the rows specify the parallelism and the critical path percentage for each static spawn site in the program.</p>
+
+<p align="justify">The parallelism profile for <i>treesum</i> shows that the program has very low parallelism (2.5~4.5) and the majority of the work on the critical path (99%) is performed by the main function (or any function called from main before the first task is spawned or after the last task completes). On examining the code, we find that the main function (in main.cpp) calls <i>create_and_time</i> (in TreeMaker.h) where half of the nodes is passed to <i>do_all_1</i> and the other half is passed to <i>do_all_2</i>. On examining both the functions we find that <i>do_all_1</i> constructs the tree serially whereas <i>do_all_2</i> constructs it in parallel.</p> 
+<p align="justify">We can use TaskProf's Causal Profiler to obtain an estimate of the increase in the parallelism of the program on optimizing <i>do_all_1</i>. To generate the causal profile annotate the region of code around the call to <i>do_all_1</i> with __OPTIMIZE__BEGIN__ and __OPTIMIZE__END__ (already added). Now compile and execute TaskProf on the <i>treesum</i> program as shown above. The post-processing program, gentprof, will now generate a file named <b>region_all.csv</b> along with the file <b>ws_profile.csv</b>. The <b>region_all.csv</b> file reports the parallelism for the whole program when the parallelism of the annotated region is optimized by 50X, 100X, 200X and 400X. The causal profile shows that the parallelism of the program increases if the annotated region is optimized.</p>
+
+<h3><a name="remevaluation"/>3.3. Evaluation</h3>
+<p align="justify">Using TaskProf we were able to optimize five applications. They are <i>minSpanningForest, convexHull, delaunayTriangulation, delaunayRefine and blackscholes</i>. We provide a python script run_bmarks_opt.py to execute all the five applications and their optimized versions. To execute the script,</p>
+&nbsp;<code> > cd /freespace/local/TaskProf/benchmarks </code><br>
+&nbsp;<code> > nohup python run_bmarks_opt.py > report_opt.txt &</code>
+<p align="justify">This script reproduces the results in Figure 5 in the paper. The original parallelism profile (Figure (a) for each application) and the causal profile (Figure (b)) can in found in the <b>ws_profile.csv</b> and <b>region_all.csv</b> files respectively in each application directory. The directory and sub-directory names for the applications are <i>"minSpanningForest/parallelKruskal"</i>, <i>"convexHull/quickHull"</i>, <i>"delaunayTriangulation/incrementalDelaunay"</i>, <i>"delaunayRefine/incrementalRefine"</i> and <i>"blackscholes"</i>. The optimized parallelism profile (Figure (c)) can be found in the <b>ws_profile.csv</b> file in the directory containing the optimized version of each application (directory names ending with _opt, with same sub-directory names as above). For executing each application individually, the steps are similar to the ones detailed in Section <a href="#Effectiveness">2.1</a> </p>
+
+<p align="justify">In order to reproduce the speedup graph of parallel execution of TaskProf over its serial execution (Figure 6 in the paper), we provide a python script that executes TaskProf on all the benchmark applications and generates the speedup graph as output. To execute the script,</p>
+
+&nbsp;<code> > cd /freespace/local/TaskProf/benchmarks</code>
+<br>
+&nbsp;<code> > nohup python run_bmarks_speedup.py > report_speedup.txt & </code>
+<p align="justify">The script generates a bar graph similar to Figure 6 in the paper in the file named <b>Speedup_graph.pdf</b>.</p>
+
+
+<br><br><br>
 </div>
 </body>
