@@ -1,1 +1,1 @@
-See index.html in the top-level source directory for detailed instructions.
+TaskProf is an tool for identifying performance bottlenecks in task-based parallel programs written in C++ using Intel Threading Building Blocks library. For details on how TaskProf works, please refer to our [paper](./ESECFSE_2017_paper_80.pdf).
