@@ -22,5 +22,4 @@ inline void PIN_ReleaseLock(PIN_LOCK* lock) {
   pthread_mutex_unlock(lock);
 }
 
-
 #endif

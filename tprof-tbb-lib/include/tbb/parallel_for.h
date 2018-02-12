@@ -22,6 +22,7 @@
 #define __TBB_parallel_for_H
 
 #include <new>
+#include <string>
 #include "t_debug_task.h"
 #include "partitioner.h"
 #include "blocked_range.h"
@@ -46,6 +47,8 @@ namespace internal {
     class start_for: public t_debug_task {
         Range my_range;
         const Body my_body;
+	std::string file_name;
+	int line_no;
         typename Partitioner::task_partition_type my_partition;
         /*override*/ task* execute();
 
@@ -56,30 +59,36 @@ namespace internal {
 
     public:
         //! Constructor for root task.
-        start_for( const Range& range, const Body& body, Partitioner& partitioner ) :
+    start_for( const Range& range, const Body& body, Partitioner& partitioner, const char* filename, int lineno ) :
             my_range(range),
             my_body(body),
-            my_partition(partitioner)
+	      my_partition(partitioner),
+	      line_no(lineno)
         {
+	  file_name.assign(filename);
         }
         //! Splitting constructor used to generate children.
         /** parent_ becomes left child.  Newly constructed object is right child. */
         start_for( start_for& parent_, typename Partitioner::split_type& split_obj) :
             my_range(parent_.my_range, split_obj),
             my_body(parent_.my_body),
-            my_partition(parent_.my_partition, split_obj)
+	      my_partition(parent_.my_partition, split_obj),
+	      line_no(parent_.line_no)
         {
             my_partition.set_affinity(*this);
+	    file_name.assign(parent_.file_name);
         }
         //! Construct right child from the given range as response to the demand.
         /** parent_ remains left child.  Newly constructed object is right child. */
         start_for( start_for& parent_, const Range& r, depth_t d ) :
             my_range(r),
             my_body(parent_.my_body),
-            my_partition(parent_.my_partition, split())
+	      my_partition(parent_.my_partition, split()),
+	      line_no(parent_.line_no)
         {
             my_partition.set_affinity(*this);
             my_partition.align_depth( d );
+	    file_name.assign(parent_.file_name);
         }
 	    static void run(  const Range& range, const Body& body, Partitioner& partitioner, const char* file_name, int line_number, void* ret_address ) {
             if( !range.empty() ) {
@@ -89,7 +98,7 @@ namespace internal {
                 // Bound context prevents exceptions from body to affect nesting or sibling algorithms,
                 // and allows users to handle exceptions safely by wrapping parallel_for in the try-block.
                 task_group_context context;
-                start_for& a = *new(task::allocate_root(context)) start_for(range,body,partitioner);
+                start_for& a = *new(task::allocate_root(context)) start_for(range,body,partitioner,file_name, line_number);
 #endif /* __TBB_TASK_GROUP_CONTEXT && !TBB_JOIN_OUTER_TASK_GROUP */
                 t_debug_task::spawn_root_and_wait(a, file_name, line_number, ret_address, true);
 		//t_debug_task::spawn_root_and_wait(a, __FILE__, __LINE__);
@@ -98,23 +107,26 @@ namespace internal {
 #if __TBB_TASK_GROUP_CONTEXT
 	    static void run(  const Range& range, const Body& body, Partitioner& partitioner, task_group_context& context, const char* file_name, int line_number, void* ret_address ) {
             if( !range.empty() ) {
-	      start_for& a = *new(task::allocate_root(context)) start_for(range,body,partitioner);
+	      start_for& a = *new(task::allocate_root(context)) start_for(range,body,partitioner,file_name, line_number);
 	      t_debug_task::spawn_root_and_wait(a, file_name, line_number, ret_address, true);
 		//t_debug_task::spawn_root_and_wait(a, __FILE__, __LINE__);
             }
         }
 #endif /* __TBB_TASK_GROUP_CONTEXT */
         //! Run body for range, serves as callback for partitioner
-        void run_body( Range &r ) { my_body( r, get_cur_tid() ); }
+        void run_body( Range &r ) {
+	  my_body( r, get_cur_tid() ); }
 
         //! spawn right task, serves as callback for partitioner
         void offer_work(typename Partitioner::split_type& split_obj) {
-	  spawn( *new( allocate_sibling(static_cast<task*>(this), sizeof(start_for)) ) start_for(*this, split_obj), NULL, 0);
+	  spawn( *new( allocate_sibling(static_cast<task*>(this), sizeof(start_for)) ) start_for(*this, split_obj), file_name.c_str(), line_no, true);
+	  //spawn( *new( allocate_sibling(static_cast<task*>(this), sizeof(start_for)) ) start_for(*this, split_obj), NULL, 0);
 	  //spawn( *new( allocate_sibling(static_cast<task*>(this), sizeof(start_for)) ) start_for(*this, split_obj), __FILE__, __LINE__);
         }
         //! spawn right task, serves as callback for partitioner
         void offer_work(const Range& r, depth_t d = 0) {
-	  spawn( *new( allocate_sibling(static_cast<task*>(this), sizeof(start_for)) ) start_for(*this, r, d), NULL, 0);
+	  spawn( *new( allocate_sibling(static_cast<task*>(this), sizeof(start_for)) ) start_for(*this, r, d), file_name.c_str(), line_no, true);
+	  //spawn( *new( allocate_sibling(static_cast<task*>(this), sizeof(start_for)) ) start_for(*this, r, d), NULL, 0);
 	  //spawn( *new( allocate_sibling(static_cast<task*>(this), sizeof(start_for)) ) start_for(*this, r, d), __FILE__, __LINE__);
         }
     };
@@ -132,12 +144,12 @@ namespace internal {
     template<typename Range, typename Body, typename Partitioner>
     task* start_for<Range,Body,Partitioner>::execute() {
 
-      __exec_begin__(getTaskId());
+      __exec_begin__(getTaskId(), file_name.c_str(), line_no);
 
       my_partition.check_being_stolen( *this );
       my_partition.execute(*this, my_range);
 
-      __exec_end__(getTaskId());
+      __exec_end__(getTaskId(), file_name.c_str(), line_no);
       return NULL;
     }
 } // namespace internal

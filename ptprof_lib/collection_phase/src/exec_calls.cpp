@@ -1,6 +1,8 @@
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
 
+#include <map>
+
 #include "exec_calls.h"
 #include "Common.H"
 #include "t_debug_task.h"
@@ -10,29 +12,41 @@ tbb::atomic<size_t> tid_ctr;
 PIN_LOCK lock;
 PIN_LOCK tid_map_lock;
 std::map<TBB_TID, size_t> tid_map;
+
 AFTaskGraph* taskGraph;
 Task_Profiler* taskProf;
+Task_Logger* taskLogger;
 
 extern "C" {
-  void TD_Activate() {
+  void TD_Activate(const char* file, int line) {
+    taskLogger = new Task_Logger();
     taskGraph = new AFTaskGraph();
+    taskGraph->setStepRegion(0, file, line, true);
     taskProf = new Task_Profiler();
   }
 
-  void Fini()
+  void Fini(const char* file, int line)
   {
+    taskGraph->setStepRegion(0, file, line, false);
     taskProf->Fini();
     //taskGraph->Fini();
   }
 
-  __attribute__((noinline)) void __exec_begin__(unsigned long taskId){
+  __attribute__((noinline)) void __exec_begin__(unsigned long taskId, const char* file, int line){
     taskGraph->CaptureExecute(get_cur_tid(), taskId);
+    
+    taskGraph->setStepRegion(get_cur_tid(), file, line, true);
     /*PROF CALL*/taskProf->TP_CaptureExecute(get_cur_tid());
   }
 
-  __attribute__((noinline)) void __exec_end__(unsigned long taskId){
+  __attribute__((noinline)) void __exec_end__(unsigned long taskId, const char* file, int line){
     /*PROF CALL*/taskProf->TP_CaptureReturn(get_cur_tid());
+    
+    taskGraph->setStepRegion(get_cur_tid(), file, line, false);
+    taskProf->update_step_and_region(get_cur_tid());
+    
     taskGraph->CaptureReturn(get_cur_tid());
+
   }
 
   __attribute__((noinline)) void __optimize_begin__(const char* file, int line){

@@ -5,5 +5,5 @@ int main(int argc, char** argv) {
   Task_Profiler* taskProf = new Task_Profiler();
 
   //compute profile
-  taskProf->GenerateProfile();
+  //taskProf->GenerateProfile();
 }

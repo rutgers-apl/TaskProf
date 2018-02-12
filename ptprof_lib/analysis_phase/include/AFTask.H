@@ -2,6 +2,7 @@
 #define AFTASK_H
 
 #include "unique_task_id.H"
+#include "Location.H"
 
 enum NodeType {
   NO_TYPE = 0,
@@ -18,9 +19,9 @@ struct profiler_data {
 
   /**** CALCULATING %AGE OF CRITICAL PATH AND REGION ****/
   size_t local_local_work;
-  std::map<size_t, size_t>* critical_call_sites;
+  std::unordered_map<size_t, size_t>* critical_call_sites;
 
-  std::map<size_t, size_t>* region_work;
+  std::unordered_map<size_t, size_t>* region_work;
   /**** CALCULATING %AGE OF CRITICAL PATH REGION ****/
 };
 
@@ -28,7 +29,7 @@ struct AFTask {
   //size_t taskId;
   //size_t cur_step;
   //NodeType young_ns_child; //NodeType of youngest non-step child  
-  //bool sp_root_n_wt_flag;
+  bool sp_root_n_wt_flag;
   //struct unique_task_id ut_id;
 
   size_t parent;
@@ -38,6 +39,17 @@ struct AFTask {
   /* profile data for each task */
   struct profiler_data t_prof;
   size_t call_site;
+
+  struct location start;
+  struct location end;
+
+  size_t sc_ov_work = 0;
+  
+  /***** AUTOMATIC REGION DETECTION **********/
+  AFTask* local_step;
+  AFTask* critical_step;
+  AFTask* parent_step;
+  /***** AUTOMATIC REGION DETECTION **********/
 };
 
 #endif

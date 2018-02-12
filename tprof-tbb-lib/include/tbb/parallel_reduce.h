@@ -22,6 +22,7 @@
 #define __TBB_parallel_reduce_H
 
 #include <new>
+#include <string>
 #include "t_debug_task.h"
 #include "aligned_space.h"
 #include "partitioner.h"
@@ -84,6 +85,8 @@ namespace internal {
     /** @ingroup algorithms */
     template<typename Range, typename Body, typename Partitioner>
     class start_reduce: public t_debug_task {
+      std::string file_name;
+      int line_no;
         typedef finish_reduce<Body> finish_type;
         Body* my_body;
         Range my_range;
@@ -99,12 +102,14 @@ namespace internal {
 
 public:
         //! Constructor used for root task
-        start_reduce( const Range& range, Body* body, Partitioner& partitioner ) :
+    start_reduce( const Range& range, Body* body, Partitioner& partitioner, const char* filename, int lineno ) :
             my_body(body),
             my_range(range),
             my_partition(partitioner),
-            my_context(root_task)
+	      my_context(root_task),
+	      line_no(lineno)
         {
+	  file_name.assign(filename);
         }
         //! Splitting constructor used to generate children.
         /** parent_ becomes left child.  Newly constructed object is right child. */
@@ -112,10 +117,12 @@ public:
             my_body(parent_.my_body),
             my_range(parent_.my_range, split_obj),
             my_partition(parent_.my_partition, split_obj),
-            my_context(right_child)
+	      my_context(right_child),
+	      line_no(parent_.line_no)
         {
             my_partition.set_affinity(*this);
             parent_.my_context = left_child;
+	    file_name.assign(parent_.file_name);
         }
         //! Construct right child from the given range as response to the demand.
         /** parent_ remains left child.  Newly constructed object is right child. */
@@ -123,28 +130,30 @@ public:
             my_body(parent_.my_body),
             my_range(r),
             my_partition(parent_.my_partition, split()),
-            my_context(right_child)
+	      my_context(right_child),
+	      line_no(parent_.line_no)
         {
             my_partition.set_affinity(*this);
             my_partition.align_depth( d ); // TODO: move into constructor of partitioner
             parent_.my_context = left_child;
+	    file_name.assign(parent_.file_name);
         }
-        static void run( const Range& range, Body& body, Partitioner& partitioner ) {
+	    static void run( const Range& range, Body& body, Partitioner& partitioner, const char* file_name, int line_number, void* ret_address ) {
             if( !range.empty() ) {
 #if !__TBB_TASK_GROUP_CONTEXT || TBB_JOIN_OUTER_TASK_GROUP
-	      t_debug_task::spawn_root_and_wait( *new(task::allocate_root()) start_reduce(range,&body,partitioner), __FILE__, __LINE__ );
+	      t_debug_task::spawn_root_and_wait( *new(task::allocate_root()) start_reduce(range,&body,partitioner,file_name, line_number), file_name, line_number, ret_address, true );
 #else
                 // Bound context prevents exceptions from body to affect nesting or sibling algorithms,
                 // and allows users to handle exceptions safely by wrapping parallel_for in the try-block.
                 task_group_context context;
-		t_debug_task::spawn_root_and_wait( *new(task::allocate_root(context)) start_reduce(range,&body,partitioner), __FILE__, __LINE__ );
+		t_debug_task::spawn_root_and_wait( *new(task::allocate_root(context)) start_reduce(range,&body,partitioner,file_name, line_number), file_name, line_number, ret_address, true );
 #endif /* __TBB_TASK_GROUP_CONTEXT && !TBB_JOIN_OUTER_TASK_GROUP */
             }
         }
 #if __TBB_TASK_GROUP_CONTEXT
         static void run( const Range& range, Body& body, Partitioner& partitioner, task_group_context& context ) {
             if( !range.empty() )
-	      t_debug_task::spawn_root_and_wait( *new(task::allocate_root(context)) start_reduce(range,&body,partitioner), __FILE__, __LINE__ );
+	      t_debug_task::spawn_root_and_wait( *new(task::allocate_root(context)) start_reduce(range,&body,partitioner), NULL, __LINE__ );
         }
 #endif /* __TBB_TASK_GROUP_CONTEXT */
         //! Run body for range
@@ -157,7 +166,7 @@ public:
             allocate_sibling(static_cast<task*>(this), tasks, sizeof(start_reduce), sizeof(finish_type));
             new((void*)tasks[0]) finish_type(my_context);
             new((void*)tasks[1]) start_reduce(*this, split_obj);
-            spawn(*tasks[1], __FILE__, __LINE__);
+            spawn(*tasks[1], file_name.c_str(), line_no, true);
         }
         //! spawn right task, serves as callback for partitioner
         void offer_work(const Range& r, depth_t d = 0) {
@@ -165,7 +174,7 @@ public:
             allocate_sibling(static_cast<task*>(this), tasks, sizeof(start_reduce), sizeof(finish_type));
             new((void*)tasks[0]) finish_type(my_context);
             new((void*)tasks[1]) start_reduce(*this, r, d);
-            spawn(*tasks[1], __FILE__, __LINE__);
+            spawn(*tasks[1], file_name.c_str(), line_no, true);
         }
     };
 
@@ -181,7 +190,7 @@ public:
     template<typename Range, typename Body, typename Partitioner>
     task* start_reduce<Range,Body,Partitioner>::execute() {
 
-      __exec_begin__(getTaskId());
+      __exec_begin__(getTaskId(),file_name.c_str(), line_no);
         my_partition.check_being_stolen( *this );
         if( my_context==right_child ) {
             finish_type* parent_ptr = static_cast<finish_type*>(parent());
@@ -196,7 +205,7 @@ public:
             __TBB_ASSERT(my_body!=parent_ptr->zombie_space.begin(),NULL);
             itt_store_word_with_release(parent_ptr->my_body, my_body );
         }
-	__exec_end__(getTaskId());
+	__exec_end__(getTaskId(),file_name.c_str(), line_no);
         return NULL;
     }
 
@@ -359,29 +368,29 @@ namespace internal {
 //! Parallel iteration with reduction and default partitioner.
 /** @ingroup algorithms **/
 template<typename Range, typename Body>
-void parallel_reduce( const Range& range, Body& body ) {
-    internal::start_reduce<Range,Body, const __TBB_DEFAULT_PARTITIONER>::run( range, body, __TBB_DEFAULT_PARTITIONER() );
+  void parallel_reduce( const Range& range, Body& body, const char* file_name, int line_number ) {
+  internal::start_reduce<Range,Body, const __TBB_DEFAULT_PARTITIONER>::run( range, body, __TBB_DEFAULT_PARTITIONER(), file_name, line_number, __builtin_return_address(0) );
 }
 
 //! Parallel iteration with reduction and simple_partitioner
 /** @ingroup algorithms **/
 template<typename Range, typename Body>
-void parallel_reduce( const Range& range, Body& body, const simple_partitioner& partitioner ) {
-    internal::start_reduce<Range,Body,const simple_partitioner>::run( range, body, partitioner );
+  void parallel_reduce( const Range& range, Body& body, const simple_partitioner& partitioner, const char* file_name, int line_number ) {
+  internal::start_reduce<Range,Body,const simple_partitioner>::run( range, body, partitioner, file_name, line_number, __builtin_return_address(0) );
 }
 
 //! Parallel iteration with reduction and auto_partitioner
 /** @ingroup algorithms **/
 template<typename Range, typename Body>
-void parallel_reduce( const Range& range, Body& body, const auto_partitioner& partitioner ) {
-    internal::start_reduce<Range,Body,const auto_partitioner>::run( range, body, partitioner );
+  void parallel_reduce( const Range& range, Body& body, const auto_partitioner& partitioner, const char* file_name, int line_number ) {
+  internal::start_reduce<Range,Body,const auto_partitioner>::run( range, body, partitioner, file_name, line_number, __builtin_return_address(0) );
 }
 
 //! Parallel iteration with reduction and affinity_partitioner
 /** @ingroup algorithms **/
 template<typename Range, typename Body>
-void parallel_reduce( const Range& range, Body& body, affinity_partitioner& partitioner ) {
-    internal::start_reduce<Range,Body,affinity_partitioner>::run( range, body, partitioner );
+  void parallel_reduce( const Range& range, Body& body, affinity_partitioner& partitioner, const char* file_name, int line_number ) {
+  internal::start_reduce<Range,Body,affinity_partitioner>::run( range, body, partitioner, file_name, line_number, __builtin_return_address(0) );
 }
 
 #if __TBB_TASK_GROUP_CONTEXT
@@ -413,10 +422,10 @@ void parallel_reduce( const Range& range, Body& body, affinity_partitioner& part
 //! Parallel iteration with reduction and default partitioner.
 /** @ingroup algorithms **/
 template<typename Range, typename Value, typename RealBody, typename Reduction>
-Value parallel_reduce( const Range& range, const Value& identity, const RealBody& real_body, const Reduction& reduction ) {
+  Value parallel_reduce( const Range& range, const Value& identity, const RealBody& real_body, const Reduction& reduction, const char* file_name, int line_number  ) {
     internal::lambda_reduce_body<Range,Value,RealBody,Reduction> body(identity, real_body, reduction);
     internal::start_reduce<Range,internal::lambda_reduce_body<Range,Value,RealBody,Reduction>,const __TBB_DEFAULT_PARTITIONER>
-                          ::run(range, body, __TBB_DEFAULT_PARTITIONER() );
+      ::run(range, body, __TBB_DEFAULT_PARTITIONER(), file_name, line_number, __builtin_return_address(0) );
     return body.result();
 }
 
@@ -424,10 +433,10 @@ Value parallel_reduce( const Range& range, const Value& identity, const RealBody
 /** @ingroup algorithms **/
 template<typename Range, typename Value, typename RealBody, typename Reduction>
 Value parallel_reduce( const Range& range, const Value& identity, const RealBody& real_body, const Reduction& reduction,
-                       const simple_partitioner& partitioner ) {
+                       const simple_partitioner& partitioner, const char* file_name, int line_number  ) {
     internal::lambda_reduce_body<Range,Value,RealBody,Reduction> body(identity, real_body, reduction);
     internal::start_reduce<Range,internal::lambda_reduce_body<Range,Value,RealBody,Reduction>,const simple_partitioner>
-                          ::run(range, body, partitioner );
+      ::run(range, body, partitioner, file_name, line_number, __builtin_return_address(0) );
     return body.result();
 }
 
@@ -435,10 +444,10 @@ Value parallel_reduce( const Range& range, const Value& identity, const RealBody
 /** @ingroup algorithms **/
 template<typename Range, typename Value, typename RealBody, typename Reduction>
 Value parallel_reduce( const Range& range, const Value& identity, const RealBody& real_body, const Reduction& reduction,
-                       const auto_partitioner& partitioner ) {
+                       const auto_partitioner& partitioner, const char* file_name, int line_number  ) {
     internal::lambda_reduce_body<Range,Value,RealBody,Reduction> body(identity, real_body, reduction);
     internal::start_reduce<Range,internal::lambda_reduce_body<Range,Value,RealBody,Reduction>,const auto_partitioner>
-                          ::run( range, body, partitioner );
+      ::run( range, body, partitioner, file_name, line_number, __builtin_return_address(0) );
     return body.result();
 }
 
@@ -446,10 +455,10 @@ Value parallel_reduce( const Range& range, const Value& identity, const RealBody
 /** @ingroup algorithms **/
 template<typename Range, typename Value, typename RealBody, typename Reduction>
 Value parallel_reduce( const Range& range, const Value& identity, const RealBody& real_body, const Reduction& reduction,
-                       affinity_partitioner& partitioner ) {
+                       affinity_partitioner& partitioner, const char* file_name, int line_number  ) {
     internal::lambda_reduce_body<Range,Value,RealBody,Reduction> body(identity, real_body, reduction);
     internal::start_reduce<Range,internal::lambda_reduce_body<Range,Value,RealBody,Reduction>,affinity_partitioner>
-                                        ::run( range, body, partitioner );
+      ::run( range, body, partitioner, file_name, line_number, __builtin_return_address(0) );
     return body.result();
 }
 

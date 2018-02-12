@@ -42,15 +42,17 @@ namespace internal {
     template<typename function>
     class function_invoker : public t_debug_task{
     public:
-        function_invoker(const function& _function) : my_function(_function) {}
+    function_invoker(const function& _function , const char* filename, int lineno) : my_function(_function),line_no(lineno) {file_name.assign(filename);}
     private:
         const function &my_function;
+	int line_no;
+	std::string file_name;
         /*override*/
         task* execute()
         {
-	  __exec_begin__(getTaskId());
+	  __exec_begin__(getTaskId(),file_name.c_str(),line_no);
 	  my_function();
-	  __exec_end__(getTaskId());
+	  __exec_end__(getTaskId(),file_name.c_str(),line_no);
 	  return NULL;
         }
     };
@@ -63,9 +65,11 @@ namespace internal {
         const function2& my_func2;
         const function3& my_func3;
 	bool is_recycled;
+	std::string file_name;
+	int line_no;
 
         task* execute (){
-	  __exec_begin__(getTaskId());
+	  __exec_begin__(getTaskId(), file_name.c_str(), line_no);
 
 	  //if(is_recycled){
 	  //return NULL;
@@ -73,28 +77,28 @@ namespace internal {
 	  __TBB_ASSERT(N==2 || N==3, "Number of arguments passed to spawner is wrong");
 	  set_ref_count(N+1);
 	  //recycle_as_safe_continuation();
-	  internal::function_invoker<function2>* invoker2 = new (allocate_child()) internal::function_invoker<function2>(my_func2);
+	  internal::function_invoker<function2>* invoker2 = new (allocate_child()) internal::function_invoker<function2>(my_func2, file_name.c_str(), line_no);
 	  __TBB_ASSERT(invoker2, "Child task allocation failed");
-	  t_debug_task::spawn(*invoker2, __FILE__, __LINE__);
+	  t_debug_task::spawn(*invoker2, file_name.c_str(), line_no);
 	  size_t n = N; // To prevent compiler warnings
 	  if (n>2) {
-	    internal::function_invoker<function3>* invoker3 = new (allocate_child()) internal::function_invoker<function3>(my_func3);
+	    internal::function_invoker<function3>* invoker3 = new (allocate_child()) internal::function_invoker<function3>(my_func3, file_name.c_str(), line_no);
 	    __TBB_ASSERT(invoker3, "Child task allocation failed");
-	    t_debug_task::spawn(*invoker3, __FILE__, __LINE__);
+	    t_debug_task::spawn(*invoker3, file_name.c_str(), line_no);
 	  }
-	  internal::function_invoker<function1>* invoker1 = new (allocate_child()) internal::function_invoker<function2>(my_func1);
+	  internal::function_invoker<function1>* invoker1 = new (allocate_child()) internal::function_invoker<function2>(my_func1, file_name.c_str(), line_no);
 	  __TBB_ASSERT(invoker1, "Child task allocation failed");
-	  t_debug_task::spawn_and_wait_for_all(*invoker1, __FILE__, __LINE__);
+	  t_debug_task::spawn_and_wait_for_all(*invoker1, file_name.c_str(), line_no);
 
 	  //my_func1();
 	  //is_recycled = true;
-	  __exec_end__(getTaskId());
+	  __exec_end__(getTaskId(), file_name.c_str(), line_no);
 	  return NULL;
 		//}
         } // execute
 
     public:
-        spawner(const function1& _func1, const function2& _func2, const function3& _func3) : my_func1(_func1), my_func2(_func2), my_func3(_func3), is_recycled(false) {}
+    spawner(const function1& _func1, const function2& _func2, const function3& _func3, const char* filename, int lineno) : my_func1(_func1), my_func2(_func2), my_func3(_func3), is_recycled(false),line_no(lineno) {file_name.assign(filename);}
     };
 
     // Creates and spawns child tasks
@@ -120,7 +124,7 @@ namespace internal {
         {
             internal::function_invoker<function>* invoker = new (allocate_child()) internal::function_invoker<function>(std::forward<function>(_func));
             __TBB_ASSERT(invoker, "Child task allocation failed");
-	    t_debug_task::spawn(*invoker, __FILE__, __LINE__);
+	    t_debug_task::spawn(*invoker, NULL,0);
         }
 
         template<typename function>
@@ -137,45 +141,45 @@ namespace internal {
             parallel_invoke_noop noop;
             typedef internal::spawner<2, function1, function2, parallel_invoke_noop> spawner_type;
             spawner_type & sub_root = *new(allocate_child()) spawner_type(std::forward<function1>(_func1), std::forward<function2>(_func2), noop);
-	    t_debug_task::spawn(sub_root, __FILE__, __LINE__);
+	    t_debug_task::spawn(sub_root, NULL, 0);
             add_children(std::forward<function>(_func)...);
         }
 #else
         // Adds child task and spawns it
         template <typename function>
-        void add_children (const function &_func)
+	  void add_children (const function &_func, const char* file_name, int line_number)
         {
-            internal::function_invoker<function>* invoker = new (allocate_child()) internal::function_invoker<function>(_func);
+	  internal::function_invoker<function>* invoker = new (allocate_child()) internal::function_invoker<function>(_func, file_name, line_number);
             __TBB_ASSERT(invoker, "Child task allocation failed");
-	    t_debug_task::spawn(*invoker, __FILE__, __LINE__);
+	    t_debug_task::spawn(*invoker, file_name, line_number);
         }
 
         // Adds a task with multiple child tasks and spawns it
         // two arguments
         template <typename function1, typename function2>
-        void add_children (const function1& _func1, const function2& _func2)
+	  void add_children (const function1& _func1, const function2& _func2, const char* file_name, int line_number)
         {
             // The third argument is dummy, it is ignored actually.
             parallel_invoke_noop noop;
-            internal::spawner<2, function1, function2, parallel_invoke_noop>& sub_root = *new(allocate_child())internal::spawner<2, function1, function2, parallel_invoke_noop>(_func1, _func2, noop);
-	    t_debug_task::spawn(sub_root, __FILE__, __LINE__);
+            internal::spawner<2, function1, function2, parallel_invoke_noop>& sub_root = *new(allocate_child())internal::spawner<2, function1, function2, parallel_invoke_noop>(_func1, _func2, noop,file_name, line_number);
+	    t_debug_task::spawn(sub_root, file_name, line_number);
         }
         // three arguments
         template <typename function1, typename function2, typename function3>
-        void add_children (const function1& _func1, const function2& _func2, const function3& _func3)
+	  void add_children (const function1& _func1, const function2& _func2, const function3& _func3, const char* file_name, int line_number)
         {
-            internal::spawner<3, function1, function2, function3>& sub_root = *new(allocate_child())internal::spawner<3, function1, function2, function3>(_func1, _func2, _func3);
-	    t_debug_task::spawn(sub_root, __FILE__, __LINE__);
+	  internal::spawner<3, function1, function2, function3>& sub_root = *new(allocate_child())internal::spawner<3, function1, function2, function3>(_func1, _func2, _func3,file_name, line_number);
+	    t_debug_task::spawn(sub_root, file_name, line_number);
         }
 #endif // __TBB_VARIADIC_PARALLEL_INVOKE
 
         // Waits for all child tasks
         template <typename F0>
-        void run_and_finish(const F0& f0)
+	  void run_and_finish(const F0& f0, const char* file_name, int line_number)
         {
-            internal::function_invoker<F0>* invoker = new (allocate_child()) internal::function_invoker<F0>(f0);
+	  internal::function_invoker<F0>* invoker = new (allocate_child()) internal::function_invoker<F0>(f0,file_name,line_number);
             __TBB_ASSERT(invoker, "Child task allocation failed");
-	    t_debug_task::spawn_and_wait_for_all(*invoker, __FILE__, __LINE__);
+	    t_debug_task::spawn_and_wait_for_all(*invoker, file_name, line_number);
         }
 
 	/*override*/ task* execute() {
@@ -269,83 +273,83 @@ void parallel_invoke(F0&& f0, F1&& f1, F&&... f) {
 // parallel_invoke with user-defined context
 // two arguments
 template<typename F0, typename F1 >
-void parallel_invoke(const F0& f0, const F1& f1, tbb::task_group_context& context) {
+  void parallel_invoke(const F0& f0, const F1& f1, tbb::task_group_context& context, const char* file_name, int line_number) {
     internal::parallel_invoke_cleaner cleaner(2, context);
     internal::parallel_invoke_helper& root = cleaner.root;
 
-    root.add_children(f1);
+    root.add_children(f1,file_name,line_number);
 
-    root.run_and_finish(f0);
+    root.run_and_finish(f0,file_name,line_number);
 }
 
 // three arguments
 template<typename F0, typename F1, typename F2 >
-void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, tbb::task_group_context& context) {
+  void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, tbb::task_group_context& context, const char* file_name, int line_number) {
     internal::parallel_invoke_cleaner cleaner(3, context);
     internal::parallel_invoke_helper& root = cleaner.root;
 
-    root.add_children(f2);
-    root.add_children(f1);
+    root.add_children(f2,file_name,line_number);
+    root.add_children(f1,file_name,line_number);
 
-    root.run_and_finish(f0);
+    root.run_and_finish(f0,file_name,line_number);
 }
 
 // four arguments
 template<typename F0, typename F1, typename F2, typename F3>
 void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3,
-                     tbb::task_group_context& context)
+                     tbb::task_group_context& context, const char* file_name, int line_number)
 {
     internal::parallel_invoke_cleaner cleaner(4, context);
     internal::parallel_invoke_helper& root = cleaner.root;
 
-    root.add_children(f3);
-    root.add_children(f2);
-    root.add_children(f1);
+    root.add_children(f3,file_name,line_number);
+    root.add_children(f2,file_name,line_number);
+    root.add_children(f1,file_name,line_number);
 
-    root.run_and_finish(f0);
+    root.run_and_finish(f0,file_name,line_number);
 }
 
 // five arguments
 template<typename F0, typename F1, typename F2, typename F3, typename F4 >
 void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4,
-                     tbb::task_group_context& context)
+                     tbb::task_group_context& context, const char* file_name, int line_number)
 {
     internal::parallel_invoke_cleaner cleaner(3, context);
     internal::parallel_invoke_helper& root = cleaner.root;
 
-    root.add_children(f4, f3);
-    root.add_children(f2, f1);
+    root.add_children(f4, f3,file_name,line_number);
+    root.add_children(f2, f1,file_name,line_number);
 
-    root.run_and_finish(f0);
+    root.run_and_finish(f0,file_name,line_number);
 }
 
 // six arguments
 template<typename F0, typename F1, typename F2, typename F3, typename F4, typename F5>
 void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4, const F5& f5,
-                     tbb::task_group_context& context)
+                     tbb::task_group_context& context, const char* file_name, int line_number)
 {
     internal::parallel_invoke_cleaner cleaner(3, context);
     internal::parallel_invoke_helper& root = cleaner.root;
 
-    root.add_children(f5, f4, f3);
-    root.add_children(f2, f1);
+    root.add_children(f5, f4, f3,file_name,line_number);
+    root.add_children(f2, f1,file_name,line_number);
 
-    root.run_and_finish(f0);
+    root.run_and_finish(f0,file_name,line_number);
 }
 
 // seven arguments
 template<typename F0, typename F1, typename F2, typename F3, typename F4, typename F5, typename F6>
 void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4,
                      const F5& f5, const F6& f6,
-                     tbb::task_group_context& context)
+                     tbb::task_group_context& context, const char* file_name, int line_number)
 {
     internal::parallel_invoke_cleaner cleaner(3, context);
     internal::parallel_invoke_helper& root = cleaner.root;
 
-    root.add_children(f6, f5, f4);
-    root.add_children(f3, f2, f1);
+    root.add_children(f6, f5, f4,file_name,line_number);
+    root.add_children(f3, f2, f1,file_name,line_number);
 
-    root.run_and_finish(f0);
+    root.run_and_finish(f0,file_name,line_number);
 }
 
 // eight arguments
@@ -353,16 +357,16 @@ template<typename F0, typename F1, typename F2, typename F3, typename F4,
          typename F5, typename F6, typename F7>
 void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4,
                      const F5& f5, const F6& f6, const F7& f7,
-                     tbb::task_group_context& context)
+                     tbb::task_group_context& context, const char* file_name, int line_number)
 {
     internal::parallel_invoke_cleaner cleaner(4, context);
     internal::parallel_invoke_helper& root = cleaner.root;
 
-    root.add_children(f7, f6, f5);
-    root.add_children(f4, f3);
-    root.add_children(f2, f1);
+    root.add_children(f7, f6, f5,file_name,line_number);
+    root.add_children(f4, f3,file_name,line_number);
+    root.add_children(f2, f1,file_name,line_number);
 
-    root.run_and_finish(f0);
+    root.run_and_finish(f0,file_name,line_number);
 }
 
 // nine arguments
@@ -370,16 +374,16 @@ template<typename F0, typename F1, typename F2, typename F3, typename F4,
          typename F5, typename F6, typename F7, typename F8>
 void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4,
                      const F5& f5, const F6& f6, const F7& f7, const F8& f8,
-                     tbb::task_group_context& context)
+                     tbb::task_group_context& context, const char* file_name, int line_number)
 {
     internal::parallel_invoke_cleaner cleaner(4, context);
     internal::parallel_invoke_helper& root = cleaner.root;
 
-    root.add_children(f8, f7, f6);
-    root.add_children(f5, f4, f3);
-    root.add_children(f2, f1);
+    root.add_children(f8, f7, f6,file_name,line_number);
+    root.add_children(f5, f4, f3,file_name,line_number);
+    root.add_children(f2, f1,file_name,line_number);
 
-    root.run_and_finish(f0);
+    root.run_and_finish(f0,file_name,line_number);
 }
 
 // ten arguments
@@ -387,82 +391,82 @@ template<typename F0, typename F1, typename F2, typename F3, typename F4,
          typename F5, typename F6, typename F7, typename F8, typename F9>
 void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4,
                      const F5& f5, const F6& f6, const F7& f7, const F8& f8, const F9& f9,
-                     tbb::task_group_context& context)
+                     tbb::task_group_context& context, const char* file_name, int line_number)
 {
     internal::parallel_invoke_cleaner cleaner(4, context);
     internal::parallel_invoke_helper& root = cleaner.root;
 
-    root.add_children(f9, f8, f7);
-    root.add_children(f6, f5, f4);
-    root.add_children(f3, f2, f1);
+    root.add_children(f9, f8, f7,file_name,line_number);
+    root.add_children(f6, f5, f4,file_name,line_number);
+    root.add_children(f3, f2, f1,file_name,line_number);
 
-    root.run_and_finish(f0);
+    root.run_and_finish(f0,file_name,line_number);
 }
 
 // two arguments
 template<typename F0, typename F1>
-void parallel_invoke(const F0& f0, const F1& f1) {
+  void parallel_invoke(const F0& f0, const F1& f1, const char* file_name, int line_number) {
     task_group_context context;
-    parallel_invoke<F0, F1>(f0, f1, context);
+    parallel_invoke<F0, F1>(f0, f1, context,file_name,line_number);
 }
 // three arguments
 template<typename F0, typename F1, typename F2>
-void parallel_invoke(const F0& f0, const F1& f1, const F2& f2) {
+  void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const char* file_name, int line_number) {
     task_group_context context;
-    parallel_invoke<F0, F1, F2>(f0, f1, f2, context);
+    parallel_invoke<F0, F1, F2>(f0, f1, f2, context,file_name,line_number);
 }
 // four arguments
 template<typename F0, typename F1, typename F2, typename F3 >
-void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3) {
+  void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const char* file_name, int line_number) {
     task_group_context context;
-    parallel_invoke<F0, F1, F2, F3>(f0, f1, f2, f3, context);
+    parallel_invoke<F0, F1, F2, F3>(f0, f1, f2, f3, context,file_name,line_number);
 }
 // five arguments
 template<typename F0, typename F1, typename F2, typename F3, typename F4>
-void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4) {
+  void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4, const char* file_name, int line_number) {
     task_group_context context;
-    parallel_invoke<F0, F1, F2, F3, F4>(f0, f1, f2, f3, f4, context);
+    parallel_invoke<F0, F1, F2, F3, F4>(f0, f1, f2, f3, f4, context,file_name,line_number);
 }
 // six arguments
 template<typename F0, typename F1, typename F2, typename F3, typename F4, typename F5>
-void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4, const F5& f5) {
+  void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4, const F5& f5, const char* file_name, int line_number) {
     task_group_context context;
-    parallel_invoke<F0, F1, F2, F3, F4, F5>(f0, f1, f2, f3, f4, f5, context);
+    parallel_invoke<F0, F1, F2, F3, F4, F5>(f0, f1, f2, f3, f4, f5, context,file_name,line_number);
 }
 // seven arguments
 template<typename F0, typename F1, typename F2, typename F3, typename F4, typename F5, typename F6>
 void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4,
-                     const F5& f5, const F6& f6)
+                     const F5& f5, const F6& f6, const char* file_name, int line_number)
 {
     task_group_context context;
-    parallel_invoke<F0, F1, F2, F3, F4, F5, F6>(f0, f1, f2, f3, f4, f5, f6, context);
+    parallel_invoke<F0, F1, F2, F3, F4, F5, F6>(f0, f1, f2, f3, f4, f5, f6, context,file_name,line_number);
 }
 // eight arguments
 template<typename F0, typename F1, typename F2, typename F3, typename F4,
          typename F5, typename F6, typename F7>
 void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4,
-                     const F5& f5, const F6& f6, const F7& f7)
+                     const F5& f5, const F6& f6, const F7& f7, const char* file_name, int line_number)
 {
     task_group_context context;
-    parallel_invoke<F0, F1, F2, F3, F4, F5, F6, F7>(f0, f1, f2, f3, f4, f5, f6, f7, context);
+    parallel_invoke<F0, F1, F2, F3, F4, F5, F6, F7>(f0, f1, f2, f3, f4, f5, f6, f7, context,file_name,line_number);
 }
 // nine arguments
 template<typename F0, typename F1, typename F2, typename F3, typename F4,
          typename F5, typename F6, typename F7, typename F8>
 void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4,
-                     const F5& f5, const F6& f6, const F7& f7, const F8& f8)
+                     const F5& f5, const F6& f6, const F7& f7, const F8& f8, const char* file_name, int line_number)
 {
     task_group_context context;
-    parallel_invoke<F0, F1, F2, F3, F4, F5, F6, F7, F8>(f0, f1, f2, f3, f4, f5, f6, f7, f8, context);
+    parallel_invoke<F0, F1, F2, F3, F4, F5, F6, F7, F8>(f0, f1, f2, f3, f4, f5, f6, f7, f8, context,file_name,line_number);
 }
 // ten arguments
 template<typename F0, typename F1, typename F2, typename F3, typename F4,
          typename F5, typename F6, typename F7, typename F8, typename F9>
 void parallel_invoke(const F0& f0, const F1& f1, const F2& f2, const F3& f3, const F4& f4,
-                     const F5& f5, const F6& f6, const F7& f7, const F8& f8, const F9& f9)
+                     const F5& f5, const F6& f6, const F7& f7, const F8& f8, const F9& f9, const char* file_name, int line_number)
 {
     task_group_context context;
-    parallel_invoke<F0, F1, F2, F3, F4, F5, F6, F7, F8, F9>(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, context);
+    parallel_invoke<F0, F1, F2, F3, F4, F5, F6, F7, F8, F9>(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, context,file_name,line_number);
 }
 #endif // __TBB_VARIADIC_PARALLEL_INVOKE
 //@}

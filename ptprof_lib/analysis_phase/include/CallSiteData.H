@@ -7,6 +7,7 @@ struct CallSiteData {
   std::string cs_filename;
   int cs_line_number;
   bool par_for;
+  size_t work;
 };
 
 #endif

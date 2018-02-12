@@ -1,7 +1,7 @@
-#include <iostream>
 #include <string.h>
 #include <sstream>
 #include <fstream>
+#include <sys/stat.h>
 
 #include "Task_Profiler.H"
 #include "CallSiteData.H"
@@ -11,7 +11,7 @@
 #define PAR_INC_FACTOR 2
 
 Task_Profiler::Task_Profiler() {
-  taskGraph = new AFTaskGraph();
+  taskGraph = new AFTaskGraph(".");
 
   std::ifstream region_file;
   region_file.open("region_info.csv");
@@ -33,110 +33,99 @@ Task_Profiler::Task_Profiler() {
       regionMap.insert(std::pair<size_t, struct CallSiteData*>(std::stoul(cs_str), cs_data));
     }
   }
+  GenerateProfile(".");
 }
 
-void Task_Profiler::GenerateProfile() {
-  std::ofstream report;
-  report.open("ws_profile.csv");
-  std::map<size_t, struct WorkSpanData> workSpanMap;
+size_t Task_Profiler::GenerateProfile(std::string folder) {
+  workSpanMap = new std::unordered_map<size_t, struct WorkSpanData>();
   struct AFTask* head = taskGraph->getHead();
-  calculateRecurse(head, &workSpanMap);
+  calculateRecurse(head, workSpanMap);
 
-  //report << "Source file,Line number,Work,Span,Parallelism,Critical Work,Percent critical work" << std::endl;
-  report << "Source file,Line number,Parallelism,Percent critical work" << std::endl;
+  std::ofstream report;
+  report.open(folder + "/ws_profile.csv");  
+  report << "Source file,Line number,Work,Span,Parallelism,Percent critical work" << std::endl;
 
   report << "main" << ","
 	 << 0 << ","
-    //<< 1 << ","
-    //<< head->t_prof.work << ","
-    //<< head->t_prof.critical_child << ","
+	 << head->t_prof.work << ","
+	 << head->t_prof.critical_child << ","
 	 << (double)head->t_prof.work/(double)head->t_prof.critical_child << ","
-    //<< head->t_prof.local_local_work << ","
 	 << ((double)head->t_prof.local_local_work/(double)head->t_prof.critical_child)*100.00
 	 << std::endl;
 
-  std::map<size_t,size_t>* head_cs_data = head->t_prof.critical_call_sites;
+  std::unordered_map<size_t,size_t>* head_cs_data = head->t_prof.critical_call_sites;
   size_t check_critical_work = head->t_prof.local_local_work;
 
-  for (std::map<size_t,struct WorkSpanData>::iterator it=workSpanMap.begin();
-       it!=workSpanMap.end(); ++it) {
-    struct CallSiteData* callsiteData = taskGraph->getSourceFileAndLine(it->first);
+  for (std::unordered_map<size_t,struct WorkSpanData>::iterator it=workSpanMap->begin();
+       it!=workSpanMap->end(); ++it) {
+    struct CallSiteData* callsiteData = taskGraph->getSourceFileAndLine(it->first, folder);
     struct WorkSpanData& workspanData = it->second;
     
     if (head_cs_data->count(it->first) != 0) { //spawn site on critical path
-      size_t cs_critical_work;
-      if (callsiteData->par_for) {
-	cs_critical_work = workspanData.span;
-      } else {
-	cs_critical_work = head_cs_data->at(it->first);
-      }
+      size_t cs_critical_work = head_cs_data->at(it->first);
       check_critical_work += cs_critical_work;
 
       report << callsiteData->cs_filename << ","
 	     << callsiteData->cs_line_number << ","
-	//<< (size_t)it->first << ","
-	//<< workspanData.call_count << ","
-	//<< workspanData.work << ","
-	//<< workspanData.span << ","
+	     << workspanData.work << ","
+	     << workspanData.span << ","
 	     << (double)workspanData.work/(double)workspanData.span << ","
-	//<< cs_critical_work << ","
 	     << ((double)cs_critical_work/(double)head->t_prof.critical_child)*100.00
 	     << std::endl;
     } else { // spawn site not on critical path
       report << callsiteData->cs_filename << ","
 	     << callsiteData->cs_line_number << ","
-	//<< (size_t)it->first << ","
-	//<< workspanData.call_count << ","
-	//<< workspanData.work << ","
-	//<< workspanData.span << ","
+	     << workspanData.work << ","
+	     << workspanData.span << ","
 	     << (double)workspanData.work/(double)workspanData.span << ","
-	//<< 0 << ","
 	     << 0
 	     << std::endl;
     }
   }
-
+  
   report.close();
 
+  size_t total_work = head->t_prof.work;
   /********** INCREASE PARALLELISM OF EACH CALLSITE AND REGION **************/
-
+  
   report_region_increase_par();
 
   /***************************************************************/
+  return total_work;
 }
 
-bool Task_Profiler::recursiveCall(struct AFTask* node) {
-  struct AFTask* parent = taskGraph->getTask(node->parent);
-  if (parent->call_site != 0) {
-    return (parent->call_site == node->call_site);
+bool Task_Profiler::checkRecursiveCall(struct AFTask* node, size_t call_site) {
+  if (node->parent == 0) {
+    return false;
   } else {
-    struct AFTask* parent_parent = taskGraph->getTask(parent->parent);
-    return (parent_parent->call_site == node->call_site);
+    struct AFTask* parent = taskGraph->getTask(node->parent);
+    if (parent->call_site == node->call_site) {
+      return true;
+    } else {
+      return checkRecursiveCall(parent, call_site);
+    }
   }
 }
 
+bool Task_Profiler::recursiveCall(struct AFTask* node) {
+  return checkRecursiveCall(node, node->call_site);
+}
+
 void Task_Profiler::calculateRecurse(struct AFTask* node,
-				 std::map<size_t, struct WorkSpanData>* workSpanMap) {
+				 std::unordered_map<size_t, struct WorkSpanData>* workSpanMap) {
   
   size_t* num_processed = new size_t[taskGraph->last_allocated_node+1]();
 
   for (size_t i = 1; i <= taskGraph->last_allocated_node; i++) {
     struct AFTask* task_node = &taskGraph->tgraph_nodes[i];
-
-    // std::cout << "Type " << task_node->type << ","
-    // 	      << "Index " << i << ","
-    // 	      << "taskid " << task_node->taskId
-    // 	      << std::endl;
     
     /* if all the children have been processed process this node */
     if (task_node->num_children == num_processed[i]) {
       //calculate work span of this node
       calculateWorkSpan(task_node);
 
+      /* If node is a ASYNC node and is not a recursive call */
       if (task_node->call_site != 0 && !recursiveCall(task_node)) {
-	//if ((size_t)task_node->call_site == 4285594) {
-	//std::cout << "callsite 198: work = " << task_node->t_prof.work << " spawn = " << task_node->t_prof.critical_child << std::endl;
-	//}
 	if (workSpanMap->count(task_node->call_site) != 0) {
 	  workSpanMap->at(task_node->call_site).work += task_node->t_prof.work;
 	  workSpanMap->at(task_node->call_site).span += task_node->t_prof.critical_child;
@@ -153,43 +142,27 @@ void Task_Profiler::calculateRecurse(struct AFTask* node,
       //check if all parents children have been processed
       checkUpdateParentWorkSpan(task_node->parent, num_processed, workSpanMap);
     } else {
-      
       //create map for critical call sites
-      //std::cout << "creating taskid = " << task_node->taskId << " type = " << task_node->type << std::endl;
-      task_node->t_prof.critical_call_sites = new std::map<size_t, size_t>();
+      task_node->t_prof.critical_call_sites = new std::unordered_map<size_t, size_t>();
       
       if (task_node->type == ASYNC) {
 	struct AFTask* parent_node = taskGraph->getTask(task_node->parent);
 	task_node->t_prof.parent_work = parent_node->t_prof.local_work;
       }
-    } /* if not continue */
+    }
   }
-
-  // for (size_t i = 1; i <= taskGraph->last_allocated_node; i++) {
-  //   assert(num_processed[i] == taskGraph->tgraph_nodes[i].num_children);
-  // }
 }
 
 void Task_Profiler::checkUpdateParentWorkSpan(size_t parent_index, 
 					      size_t* num_processed,
-					      std::map<size_t, struct WorkSpanData>* workSpanMap) {
+					      std::unordered_map<size_t, struct WorkSpanData>* workSpanMap) {
   num_processed[parent_index]++;
   struct AFTask* parent_node = taskGraph->getTask(parent_index);
 
   if (parent_node->num_children == num_processed[parent_index]) {
     calculateWorkSpan(parent_node);
 
-    // std::cout << "Type " << parent_node->type << ","
-    // 	      << "Index " << parent_index << ","
-    // 	      << parent_node->call_site << ","
-    // 	      << parent_node->t_prof.work << ","
-    // 	      << parent_node->t_prof.critical_child << ","
-    // 	      << std::endl;
-
     if (parent_node->call_site != 0 && !recursiveCall(parent_node)) {
-      //if ((size_t)parent_node->call_site == 4321523) {
-      //std::cout << "callsite 198: work = " << parent_node->t_prof.work << " spawn = " << parent_node->t_prof.critical_child << std::endl;
-      //}
       if (workSpanMap->count(parent_node->call_site) != 0) {
 	workSpanMap->at(parent_node->call_site).work += parent_node->t_prof.work;
 	workSpanMap->at(parent_node->call_site).span += parent_node->t_prof.critical_child;
@@ -222,11 +195,10 @@ void Task_Profiler::calculateWorkSpan(struct AFTask* node) {
     parent->t_prof.work += node->t_prof.work;
     
     // Calculate the span of the subtree with ASYNC node as root
-    if (node->t_prof.local_work > node->t_prof.critical_child) {
+    if (node->t_prof.local_work >= node->t_prof.critical_child) {
       node->t_prof.critical_child = node->t_prof.local_work;
     }
 
-    //std::cout << "ASYNC Taskid = " << node->taskId << " work = " << node->t_prof.work << " span = " << node->t_prof.critical_child << std::endl;
     insert_cs_data(node->t_prof.critical_call_sites, node->call_site, node->t_prof.local_local_work);
     
     // Check if ASYNC node realises the greatest span of the parent
@@ -240,48 +212,52 @@ void Task_Profiler::calculateWorkSpan(struct AFTask* node) {
     }
 
   } else if (node->type == FINISH) {
-     // Update the work of the parent
+    // Update the work of the parent
     parent->t_prof.work += node->t_prof.work;
     
     // Calculate the span of the subtree with FINISH node as root
-    if (node->t_prof.local_work > node->t_prof.critical_child) {
+    if (node->t_prof.local_work >= node->t_prof.critical_child) {
       node->t_prof.critical_child = node->t_prof.local_work;
 
-      if (node->parent != 0) {
-	if (node->call_site == 0) {
+      if (node->sp_root_n_wt_flag == true) { //if the finish node is created from a spawn_root_and_wait call
+	struct CallSiteData* callsiteData = taskGraph->getSourceFileAndLine(node->call_site, ".");
+	if (callsiteData->par_for) {
+	  node->t_prof.critical_call_sites->clear();
+	  insert_cs_data(node->t_prof.critical_call_sites, 
+			 node->call_site, node->t_prof.critical_child);
+	} else {
+	  insert_cs_data(node->t_prof.critical_call_sites, 
+			 node->call_site, node->t_prof.local_local_work);
+	}
+      } else { //if implicit finish node or head finish node
+	if (node->parent != 0) {
 	  delete node->t_prof.critical_call_sites;
 	  node->t_prof.critical_call_sites = NULL;
 	  parent->t_prof.local_local_work += node->t_prof.local_local_work;
-	} else {
-	  //if (node->parent != 0) {
-	  insert_cs_data(node->t_prof.critical_call_sites, 
-			 node->call_site, node->t_prof.local_local_work);
-	  //}
 	}
       }
     } else { //needed for just critical path calculation
-      std::map<size_t, size_t>* cs_map = node->t_prof.critical_call_sites;
+      std::unordered_map<size_t, size_t>* cs_map = node->t_prof.critical_call_sites;
       size_t sum_cs = 0;
       //find sum of all spawn site on critical path
-      for (std::map<size_t,size_t>::iterator it=cs_map->begin();
+      for (std::unordered_map<size_t,size_t>::iterator it=cs_map->begin();
 	   it!=cs_map->end(); ++it) {
 	sum_cs += it->second;
       }
       parent->t_prof.local_local_work += (node->t_prof.critical_child-sum_cs);
     }
 
-    //std::cout << "FINISH Taskid = " << node->taskId << " work = " << node->t_prof.work << " span = " << node->t_prof.critical_child << std::endl;
     // Add current node's critical path to the parent's critical path
     parent->t_prof.local_work += node->t_prof.critical_child;
 
     if (node->parent != 0) {
-    // add critical call sites to parent and delete current call site
+      // add critical call sites to parent and delete current call site
       merge_critical_call_sites(node->t_prof.critical_call_sites, parent->t_prof.critical_call_sites);
     }
   }
 }
 
-void Task_Profiler::insert_cs_data(std::map<size_t, size_t>* cs_map, size_t call_site, size_t local_local_work) {
+void Task_Profiler::insert_cs_data(std::unordered_map<size_t, size_t>* cs_map, size_t call_site, size_t local_local_work) {
   if (cs_map->count(call_site) != 0) {
     cs_map->at(call_site) += local_local_work;
   } else {
@@ -289,11 +265,11 @@ void Task_Profiler::insert_cs_data(std::map<size_t, size_t>* cs_map, size_t call
   }
 }
 
-void Task_Profiler::merge_critical_call_sites(std::map<size_t, size_t>* source, 
-					      std::map<size_t, size_t>* dest) {
+void Task_Profiler::merge_critical_call_sites(std::unordered_map<size_t, size_t>* source, 
+					      std::unordered_map<size_t, size_t>* dest) {
 
   if (source != NULL) {
-    for (std::map<size_t,size_t>::iterator it=source->begin();
+    for (std::unordered_map<size_t,size_t>::iterator it=source->begin();
 	 it!=source->end(); ++it) {
       if (dest->count(it->first) != 0) {//entry present. update
 	dest->at(it->first) += it->second;
@@ -308,7 +284,7 @@ void Task_Profiler::merge_critical_call_sites(std::map<size_t, size_t>* source,
 
 void Task_Profiler::report_region_increase_par() {
   unsigned int cs_id = 0;
-  for (std::map<size_t,struct CallSiteData*>::iterator it=regionMap.begin();
+  for (std::unordered_map<size_t,struct CallSiteData*>::iterator it=regionMap.begin();
        it!=regionMap.end(); ++it) {
     cs_id++;
 
@@ -438,21 +414,17 @@ void Task_Profiler::calculateWorkSpan_region(struct AFTask* node, size_t updated
     size_t step_work = node->t_prof.work;
     if (node->t_prof.region_work != NULL) {
       if (updated_region == 0) { //optimize all regions
-	for (std::map<size_t,size_t>::iterator it=(node->t_prof.region_work)->begin();
+	for (std::unordered_map<size_t,size_t>::iterator it=(node->t_prof.region_work)->begin();
 	     it!=(node->t_prof.region_work)->end(); ++it) {
 	  size_t region_work = it->second;
-	  //std::cout << "Work of region = " << region_work << std::endl;
 	  size_t region_work_decrease = region_work - (region_work/par_increase);
 	  step_work -= region_work_decrease;
-	  //std::cout << "reduced step work by " << region_work_decrease << std::endl;	  
 	}
 	
       } else if (node->t_prof.region_work->count(updated_region) != 0) {
 	size_t region_work = node->t_prof.region_work->at(updated_region);
-	//std::cout << "Work of region = " << region_work << std::endl;
 	size_t region_work_decrease = region_work - (region_work/par_increase);
 	step_work -= region_work_decrease;
-	//std::cout << "reduced step work by " << region_work_decrease << std::endl;
       }
     }
 
@@ -464,7 +436,7 @@ void Task_Profiler::calculateWorkSpan_region(struct AFTask* node, size_t updated
     //parent->t_prof.work += node->t_prof.work;
     
     // Calculate the span of the subtree with ASYNC node as root
-    if (node->t_prof.local_work > node->t_prof.critical_child) {
+    if (node->t_prof.local_work >= node->t_prof.critical_child) {
       node->t_prof.critical_child = node->t_prof.local_work;
     }
 
@@ -479,7 +451,7 @@ void Task_Profiler::calculateWorkSpan_region(struct AFTask* node, size_t updated
     //parent->t_prof.work += node->t_prof.work;
     
     // Calculate the span of the subtree with FINISH node as root
-    if (node->t_prof.local_work > node->t_prof.critical_child) {
+    if (node->t_prof.local_work >= node->t_prof.critical_child) {
       node->t_prof.critical_child = node->t_prof.local_work;
     }
 

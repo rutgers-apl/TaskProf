@@ -9,40 +9,26 @@
 #include <fstream>
 #include <vector>
 #include <string>
-#include <map>
+#include <unordered_map>
 
 #include "AFTaskGraph.H"
 #include "Common.H"
-
-#define NUM_ENTRIES 1024
+#include "Location.H"
+#include "Task_Logger.H"
 
 extern AFTaskGraph* taskGraph;
-
-struct step_work_data {
-  //char* seq_num_str;
-  //unsigned int sum_seq_nos;
-  //unsigned int depth;
-  size_t step_parent;
-  size_t work;
-  std::map<size_t, size_t>* region_work;
-};
+extern Task_Logger* taskLogger;
 
 class Task_Profiler {
 private:
-  //PIN_LOCK prof_lock;
-  std::ofstream report[NUM_THREADS];
-
-  unsigned int last_allocated[NUM_THREADS];
-  struct step_work_data step_work_list[NUM_THREADS][NUM_ENTRIES] = {{{0}}};
-  //std::vector<struct step_work_data> step_work_list[NUM_THREADS];
-  std::map<size_t, struct CallSiteData*> regionMap;
-
+  std::unordered_map<size_t, struct CallSiteData*> regionMap;
+  Task_Logger t_logger;
   int perf_fds[NUM_THREADS];
   int perf_event_open_wrapper(struct perf_event_attr *hw_event, pid_t pid,
 			      int cpu, int group_fd, unsigned long flags);
   size_t stop_n_get_count (THREADID threadid);
   void start_count(THREADID threadid);
-  
+
 public:
   Task_Profiler();
   void TP_CaptureExecute(THREADID threadid);
@@ -55,6 +41,7 @@ public:
   void TP_CaptureEndOptimize(THREADID threadid, const char* file, int line, void* return_address);
   void Fini();
   void dumpRegionInfo();
+  void update_step_and_region(THREADID threadid);
 };
 
 #endif

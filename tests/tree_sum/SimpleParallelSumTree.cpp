@@ -27,7 +27,7 @@ class SimpleSumTask: public tbb::t_debug_task {
 public:
   SimpleSumTask( TreeNode* root_, Value* sum_ ) : root(root_), sum(sum_) {}
   task* execute() {
-    __exec_begin__(getTaskId());
+    __exec_begin__(getTaskId(),__FILE__, __LINE__);
     if( root->node_count < GRANULARITY ) {
       *sum = SerialSumTree(root);
     } else {
@@ -48,12 +48,12 @@ public:
 	tbb::t_debug_task& b = *new( allocate_child() ) SimpleSumTask(root->right,&y);
 	tbb::t_debug_task::spawn(b, __FILE__, __LINE__);
       }
-      tbb::t_debug_task::wait_for_all();
+      tbb::t_debug_task::wait_for_all(__FILE__, __LINE__);
       *sum = root->value;
       if( root->left ) *sum += x;
       if( root->right ) *sum += y;
     }
-    __exec_end__(getTaskId());
+    __exec_end__(getTaskId(),__FILE__, __LINE__);
     return NULL;
   }
 };
