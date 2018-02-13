@@ -6,6 +6,7 @@ This folder contains the TBB implementation setup to run with TaskProf profiler.
 
 2) Run make in current folder and run the program.
    > ./detect_primes_tasks 0 10000000 2500000
+   > $TP_GENTPROF/gentrof
    This generates the profile ws_profile.csv. Notice that the parallelism in the program is low ~2.
    To find the region of code that is the bottleneck, notice that the profile says that line 52 or 54 does the major percentage of work on the critical path.
    Now designate the region of code between lines 34 and 48 (already annotated) as the region to optimize and build and run the program again.
@@ -14,4 +15,5 @@ This folder contains the TBB implementation setup to run with TaskProf profiler.
 
 3) Now increase the parallelism in the program by running it with smaller grain size.
    > ./detect_primes_tasks 0 10000000 10000
+   > $TP_GENTPROF/gentrof
    Notice the parallelism increased in the ws_profile.csv.

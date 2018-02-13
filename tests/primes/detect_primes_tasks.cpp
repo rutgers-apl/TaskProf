@@ -60,18 +60,19 @@ public:
 };
 
 int main(int argc, char* argv[]) {
-  TD_Activate(__FILE__, __LINE__);
   if (argc != 4) {
     std::cout << "Format: ./detect_primes <range_begin> <range_end> <grain_size>" << std::endl;
     return 0;
   }
+  
+  tbb::task_scheduler_init init(NUM_THREADS_HERE);
+  TD_Activate(__FILE__, __LINE__);
   
   size_t range_begin = strtoul(argv[1], NULL, 0);
   size_t range_end = strtoul(argv[2], NULL, 0);
   assert(range_end > range_begin);
   grain_size = strtoul(argv[3], NULL, 0);
   
-  tbb::task_scheduler_init init(NUM_THREADS_HERE);
   total_elems = range_end - range_begin;
   assert(grain_size <= total_elems);
 
