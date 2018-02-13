@@ -24,13 +24,13 @@ extern Task_Logger* taskLogger;
 #define __OPTIMIZE__END__ __optimize_end__(__FILE__, __LINE__);
 
 extern "C" {
-  __attribute__((noinline)) void TD_Activate(const char* file, int line);
+  __attribute__((noinline)) void TD_Activate();
 
-  __attribute__((noinline)) void Fini(const char* file, int line);
+  __attribute__((noinline)) void Fini();
 
-  __attribute__((noinline)) void __exec_begin__(unsigned long taskId, const char* file, int line);
+  __attribute__((noinline)) void __exec_begin__(unsigned long taskId);
   
-  __attribute__((noinline)) void __exec_end__(unsigned long taskId, const char* file, int line);
+  __attribute__((noinline)) void __exec_end__(unsigned long taskId);
 
   __attribute__((noinline)) void __optimize_begin__(const char* file, int line);
 

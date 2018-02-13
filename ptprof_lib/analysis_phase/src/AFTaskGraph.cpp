@@ -82,30 +82,6 @@ void AFTaskGraph::create_dpst(std::string folder, bool is_parallel) {
 	  std::string step_work_str;
 	  std::getline(sstream, step_work_str, ',');
 	  tgraph_nodes[insert_idx].t_prof.work = std::stoul(step_work_str);
-
-	  std::string start_line_str;
-	  std::getline(sstream, start_line_str, ',');
-
-	  std::string start_file_str;
-	  std::getline(sstream, start_file_str, ',');
-
-	  if (start_file_str.compare("NIL") != 0) {//empty start file
-	    tgraph_nodes[insert_idx].start.line = std::stoi(start_line_str);
-	    tgraph_nodes[insert_idx].start.filename = new char[64];
-	    strcpy(tgraph_nodes[insert_idx].start.filename,start_file_str.c_str());
-	  }
-
-	  std::string end_line_str;
-	  std::getline(sstream, end_line_str, ',');
-
-	  std::string end_file_str;
-	  std::getline(sstream, end_file_str, ',');
-
-	  if (end_file_str.compare("NIL") != 0) {//empty end file
-	    tgraph_nodes[insert_idx].end.line = std::stoi(end_line_str);
-	    tgraph_nodes[insert_idx].end.filename = new char[64];
-	    strcpy(tgraph_nodes[insert_idx].end.filename,end_file_str.c_str());
-	  }
 		
 	  //update region work if present
 	  std::string region;

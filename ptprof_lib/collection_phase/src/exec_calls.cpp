@@ -18,33 +18,27 @@ Task_Profiler* taskProf;
 Task_Logger* taskLogger;
 
 extern "C" {
-  void TD_Activate(const char* file, int line) {
+  void TD_Activate() {
     taskLogger = new Task_Logger();
     taskGraph = new AFTaskGraph();
-    taskGraph->setStepRegion(0, file, line, true);
     taskProf = new Task_Profiler();
   }
 
-  void Fini(const char* file, int line)
+  void Fini()
   {
-    taskGraph->setStepRegion(0, file, line, false);
     taskProf->Fini();
     //taskGraph->Fini();
   }
 
-  __attribute__((noinline)) void __exec_begin__(unsigned long taskId, const char* file, int line){
+  __attribute__((noinline)) void __exec_begin__(unsigned long taskId){
     taskGraph->CaptureExecute(get_cur_tid(), taskId);
     
-    taskGraph->setStepRegion(get_cur_tid(), file, line, true);
     /*PROF CALL*/taskProf->TP_CaptureExecute(get_cur_tid());
   }
 
-  __attribute__((noinline)) void __exec_end__(unsigned long taskId, const char* file, int line){
+  __attribute__((noinline)) void __exec_end__(unsigned long taskId){
     /*PROF CALL*/taskProf->TP_CaptureReturn(get_cur_tid());
-    
-    taskGraph->setStepRegion(get_cur_tid(), file, line, false);
-    taskProf->update_step_and_region(get_cur_tid());
-    
+        
     taskGraph->CaptureReturn(get_cur_tid());
 
   }

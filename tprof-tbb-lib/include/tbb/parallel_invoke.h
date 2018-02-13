@@ -50,9 +50,9 @@ namespace internal {
         /*override*/
         task* execute()
         {
-	  __exec_begin__(getTaskId(),file_name.c_str(),line_no);
+	  __exec_begin__(getTaskId());
 	  my_function();
-	  __exec_end__(getTaskId(),file_name.c_str(),line_no);
+	  __exec_end__(getTaskId());
 	  return NULL;
         }
     };
@@ -69,7 +69,7 @@ namespace internal {
 	int line_no;
 
         task* execute (){
-	  __exec_begin__(getTaskId(), file_name.c_str(), line_no);
+	  __exec_begin__(getTaskId());
 
 	  //if(is_recycled){
 	  //return NULL;
@@ -92,7 +92,7 @@ namespace internal {
 
 	  //my_func1();
 	  //is_recycled = true;
-	  __exec_end__(getTaskId(), file_name.c_str(), line_no);
+	  __exec_end__(getTaskId());
 	  return NULL;
 		//}
         } // execute

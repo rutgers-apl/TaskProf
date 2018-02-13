@@ -43,7 +43,7 @@ class TreeMaker {
     }
 
     tbb::task* execute() {
-      __exec_begin__(getTaskId(),__FILE__, __LINE__);
+      __exec_begin__(getTaskId());
       long subtree_size = my_root->node_count - 1;
       if( subtree_size < GRANULARITY ) { /* grainsize */
 	my_root->left  = MyTreeMaker::do_all_1(subtree_size/2);
@@ -55,9 +55,9 @@ class TreeMaker {
 	set_ref_count(3);
 	tbb::t_debug_task::spawn(*a, __FILE__, __LINE__);
 	tbb::t_debug_task::spawn(*b, __FILE__, __LINE__);
-	tbb::t_debug_task::wait_for_all(__FILE__, __LINE__);
+	tbb::t_debug_task::wait_for_all();
       }
-      __exec_end__(getTaskId(),__FILE__, __LINE__);
+      __exec_end__(getTaskId());
       return NULL;
     }
   };

@@ -144,12 +144,12 @@ namespace internal {
     template<typename Range, typename Body, typename Partitioner>
     task* start_for<Range,Body,Partitioner>::execute() {
 
-      __exec_begin__(getTaskId(), file_name.c_str(), line_no);
+      __exec_begin__(getTaskId());
 
       my_partition.check_being_stolen( *this );
       my_partition.execute(*this, my_range);
 
-      __exec_end__(getTaskId(), file_name.c_str(), line_no);
+      __exec_end__(getTaskId());
       return NULL;
     }
 } // namespace internal

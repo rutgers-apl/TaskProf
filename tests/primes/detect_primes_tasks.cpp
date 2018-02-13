@@ -29,7 +29,7 @@ public:
   CheckPrimesTask(size_t begin, size_t end): begin(begin), end(end){}
   
   tbb::task* execute() {
-    __exec_begin__(getTaskId(), __FILE__, __LINE__);
+    __exec_begin__(getTaskId());
     if ((end-begin) <= grain_size) {
       //__OPTIMIZE__BEGIN__
       //determine range_id
@@ -52,9 +52,9 @@ public:
       tbb::t_debug_task::spawn(*a, __FILE__, __LINE__);
       tbb::task* b = new( tbb::task::allocate_child() ) CheckPrimesTask(begin + ((end-begin)/2), end);
       tbb::t_debug_task::spawn(*b, __FILE__, __LINE__);
-      tbb::t_debug_task::wait_for_all(__FILE__, __LINE__);
+      tbb::t_debug_task::wait_for_all();
     }
-    __exec_end__(getTaskId(), __FILE__, __LINE__);
+    __exec_end__(getTaskId());
     return NULL;
   }
 };
@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
   }
   
   tbb::task_scheduler_init init(NUM_THREADS_HERE);
-  TD_Activate(__FILE__, __LINE__);
+  TD_Activate();
   
   size_t range_begin = strtoul(argv[1], NULL, 0);
   size_t range_end = strtoul(argv[2], NULL, 0);
@@ -94,5 +94,5 @@ int main(int argc, char* argv[]) {
       report << primes[i][j] << "   ";
   }
 
-  Fini(__FILE__, __LINE__);
+  Fini();
 }

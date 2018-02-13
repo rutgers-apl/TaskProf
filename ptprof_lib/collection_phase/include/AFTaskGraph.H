@@ -41,7 +41,6 @@ public:
   struct location getCurStepRegionBegin(THREADID threadid);
   struct location getCurStepRegionEnd(THREADID threadid);
   void dumpCallsiteInfo();
-  void setStepRegion(THREADID threadid, const char* file, int line, bool start);
 };
 
 #endif

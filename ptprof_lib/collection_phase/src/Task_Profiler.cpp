@@ -59,10 +59,6 @@ size_t Task_Profiler::stop_n_get_count (THREADID threadid) {
 #endif
 }
 
-void Task_Profiler::update_step_and_region(THREADID threadid) {
-  taskLogger->update_step_and_region(threadid,taskGraph->getCurStepRegionBegin(threadid),taskGraph->getCurStepRegionEnd(threadid));
-}
-
 void Task_Profiler::TP_CaptureExecute(THREADID threadid) {  
   start_count(threadid);
 }
@@ -92,15 +88,13 @@ void Task_Profiler::TP_CaptureSpawn_Exit(THREADID threadid) {
 
 void Task_Profiler::TP_CaptureBeginOptimize(THREADID threadid, const char* file, int line, void* return_address) {
   size_t count = stop_n_get_count(threadid);
-  taskLogger->log(threadid,taskGraph->getCurStepId(threadid),taskGraph->getCurStepParent(threadid),count,STEP,0);
-  taskLogger->update_file_line(threadid,taskGraph->getCurStepRegionBegin(threadid),taskGraph->getCurStepRegionEnd(threadid));
+  taskLogger->log_intermediate_step(threadid,taskGraph->getCurStepId(threadid),taskGraph->getCurStepParent(threadid),count,STEP,0);
   start_count(threadid);
 }
 
 void Task_Profiler::TP_CaptureEndOptimize(THREADID threadid, const char* file, int line, void* return_address) {
   size_t count = stop_n_get_count(threadid);  
   taskLogger->buffer_info(threadid,taskGraph->getCurStepId(threadid),taskGraph->getCurStepParent(threadid),count,STEP,0);
-  taskLogger->update_file_line(threadid,taskGraph->getCurStepRegionBegin(threadid),taskGraph->getCurStepRegionEnd(threadid));
   
   if (regionMap.count((ADDRINT)return_address) == 0) {
     struct CallSiteData* callsiteData = new CallSiteData();
@@ -120,9 +114,7 @@ void Task_Profiler::Fini() {
 		   taskGraph->getCurStepParent(0),
 		   count,
 		   STEP,
-		   0,
-		   taskGraph->getCurStepRegionBegin(0),
-		   taskGraph->getCurStepRegionEnd(0));
+		   0);
 
 
   //write callsite info to file

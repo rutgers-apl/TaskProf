@@ -35,16 +35,6 @@ size_t AFTaskGraph::getCurStepId(THREADID threadid) {
   return (cur_dpst_index[threadid].top())->child_id;
 }
 
-struct location AFTaskGraph::getCurStepRegionBegin(THREADID threadid) {
-  struct AFTask* cur_task  = cur_dpst_index[threadid].top();
-  return cur_task->start;
-}
-
-struct location AFTaskGraph::getCurStepRegionEnd(THREADID threadid) {
-  struct AFTask* cur_task  = cur_dpst_index[threadid].top();
-  return cur_task->end;
-}
-
 void AFTaskGraph::CaptureSpawnOnly(THREADID threadid, size_t taskId, void* return_address)
 {
   PIN_GetLock(&lock, 0);
@@ -155,16 +145,10 @@ void AFTaskGraph::CaptureReturn(THREADID threadid)
   struct AFTask* cur_node = cur_dpst_index[threadid].top();
   if (cur_node->sync_finish_flag == true) {
     cur_dpst_index[threadid].pop();      
-    delete cur_node->start.filename;
-    cur_node->start.filename = NULL;
-    delete cur_node->end.filename;
-    cur_node->end.filename = NULL;
     delete cur_node;
     cur_node = cur_dpst_index[threadid].top();
   }
   cur_dpst_index[threadid].pop();
-  delete cur_node->start.filename;
-  delete cur_node->end.filename;  
   delete cur_node;
   //PIN_ReleaseLock(&lock);
 }
@@ -187,10 +171,6 @@ void AFTaskGraph::CaptureWaitOnly(THREADID threadid)
   struct AFTask* cur_node = cur_dpst_index[threadid].top();
 
   cur_dpst_index[threadid].pop();
-  delete cur_node->start.filename;
-  cur_node->start.filename = NULL;
-  delete cur_node->end.filename;
-  cur_node->end.filename = NULL;
   delete cur_node;
 
   cur_node = cur_dpst_index[threadid].top();
@@ -254,20 +234,4 @@ void AFTaskGraph::dumpCallsiteInfo() {
 			 << std::endl;
   }
   report_callsite_info.close();
-}
-
-void AFTaskGraph::setStepRegion(THREADID threadid, const char* file, int line, bool start) {
-  if (file == NULL) return;
-  struct AFTask* cur_step_parent = cur_dpst_index[threadid].top();
-  if (start) {
-    cur_step_parent->start.line = line;
-    delete cur_step_parent->start.filename;
-    cur_step_parent->start.filename = new char[64];
-    strcpy(cur_step_parent->start.filename, file);
-  } else {
-    cur_step_parent->end.line = line;
-    delete cur_step_parent->end.filename;
-    cur_step_parent->end.filename = new char[64];
-    strcpy(cur_step_parent->end.filename, file);
-  }
 }

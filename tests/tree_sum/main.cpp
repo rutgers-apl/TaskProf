@@ -47,7 +47,7 @@ void Run( const char* which, Value(*SumTree)(TreeNode*), TreeNode* root, bool si
 }
 
 int main( int argc, const char *argv[] ) {
-  TD_Activate(__FILE__, __LINE__);
+  TD_Activate();
   long number_of_nodes = 100000000;
   bool silent = true;
 
@@ -55,7 +55,7 @@ int main( int argc, const char *argv[] ) {
 
   Run ( "SimpleParallelSumTree", SimpleParallelSumTree, root, silent );
 
-  Fini(__FILE__, __LINE__);
+  Fini();
 
   return 0;
 }

@@ -8,7 +8,6 @@
 #include <string.h>
 
 #include "Common.H"
-#include "Location.H"
 
 #define NUM_ENTRIES 1024
 
@@ -18,8 +17,6 @@ struct step_work_data {
   size_t node_id;
   unsigned short int node_type;
   ADDRINT ret_addr;
-  struct location start;
-  struct location end;
   std::unordered_map<size_t, size_t>* region_work;
 };
 
@@ -31,12 +28,11 @@ private:
 
 public:
   Task_Logger();
-  void update_step_and_region(THREADID threadid,struct location start, struct location end);
-  void update_file_line(THREADID threadid,struct location start, struct location end);
   void log(THREADID,size_t,size_t,size_t,unsigned short int,ADDRINT);
+  void log_intermediate_step(THREADID,size_t,size_t,size_t,unsigned short int,ADDRINT);
   void buffer_info(THREADID threadid,size_t creator_tid,size_t parent,size_t work,int node_type,ADDRINT ret_addr);
   void log_region_work(THREADID threadid,ADDRINT return_address,size_t work);
-  void Fini(size_t creator_tid,size_t parent,size_t work,unsigned short int node_type,ADDRINT ret_addr,struct location start, struct location end);
+  void Fini(size_t creator_tid,size_t parent,size_t work,unsigned short int node_type,ADDRINT ret_addr);
   void log_sched_ov(THREADID threadid, size_t node_id, size_t work);  
 };
 

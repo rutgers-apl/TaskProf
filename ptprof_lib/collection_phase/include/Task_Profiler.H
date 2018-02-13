@@ -13,7 +13,6 @@
 
 #include "AFTaskGraph.H"
 #include "Common.H"
-#include "Location.H"
 #include "Task_Logger.H"
 
 extern AFTaskGraph* taskGraph;
